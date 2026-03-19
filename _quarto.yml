@@ -1,0 +1,23 @@
+project:
+  type: book
+
+book:
+  title: "Lecture 6: Microbiome Analysis with R"
+  author: "高春辉"
+  date: now
+  chapters:
+    - index.qmd
+    - intro.qmd
+    - summary.qmd
+    - references.qmd
+
+bibliography: references.bib
+
+format:
+  html:
+    theme: cosmo
+  pdf:
+    documentclass: scrreprt
+
+
+
