@@ -7,7 +7,13 @@ book:
   date: now
   chapters:
     - index.qmd
-    - intro.qmd
+    - preprocess.qmd
+    - microtable.qmd
+    - taxonomy.qmd
+    - alpha.qmd
+    - beta.qmd
+    - differ.qmd
+    - network.qmd
     - summary.qmd
     - references.qmd
 

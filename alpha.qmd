@@ -1,0 +1,67 @@
+# α 多样性 {#sec-alpha-diversity}
+
+
+{{< include microtable.qmd >}}
+
+## α 多样性分析
+
+在 `microeco` 包中，处理 `microtable` 对象（通常简写为 `mt`）的流程非常模块化。针对你的需求，我们需要用到 `rarefy_samples` 方法进行抽平，以及 `trans_alpha` 类进行计算和绘图。
+
+### 抽平 (Rarefaction)
+
+为了保证 Alpha 多样性的公平比较，通常先将样本抽平到相同的测序深度。
+
+```{r}
+# 建议先检查一下各样本的序列量，确定抽平深度
+mt$sample_sums() |> summary()
+```
+
+新建一个对象保存抽平后的结果。
+
+```{r}
+mt_rarafied = clone(mt)
+mt_rarafied$rarefy_samples(sample.size = max(min(mt$sample_sums(), 20000)))
+mt_rarafied$tidy_dataset()
+```
+
+检查抽平后的结果。
+
+```{r}
+mt_rarafied$sample_sums() |> summary()
+```
+
+### 计算 Alpha 多样性指标
+
+抽平后，使用 `cal_alphadiv()` 函数计算常用的指标（如 Shannon, Chao1, Observed 等）。
+
+```{r}
+measures = c("Observed", "Chao1", "Shannon", "Simpson")
+mt_rarafied$cal_alphadiv(measures = measures) # NULL 表示计算所有默认指标
+```
+
+### 创建分析对象
+
+使用 `trans_alpha` 类来关联数据和分组信息（`treatment`）。
+
+```{r}
+t1 = trans_alpha$new(dataset = mt_rarafied, group = "treatment")
+t1$cal_diff(method = "KW_dunn", KW_dunn_letter = TRUE)
+```
+
+### 画图
+
+使用 `plot_alpha()` 方法来绘制图片。
+
+```{r}
+plots = lapply(measures, function(x){
+ t1$plot_alpha(measure = x, add = "jitter")
+})
+
+wrap_plots(plots)
+```
+
+
+
+## 💡 小提示
+
+**microeco** 包的使用文档参见：<https://chiliubio.github.io/microeco_tutorial>。

@@ -1,0 +1,92 @@
+# 菌群差异分析
+
+## 概述
+
+
+
+## 流程
+
+
+差异丰度测试是微生物组分析中的一个重要部分。它可以找到在不同组之间确定群落差异的显著分类群。由于基础模型/假设的不同，不同的方法可能会产生不一致的结果。目前，`trans_diff` 类包含多种著名的差异测试方法或封装方法，以更好地捕捉重要的生物标志物。
+
+```{r}
+#| echo: false
+#| label: fig-trans-diff-methods
+#| fig-cap: "使用 microeco 进行差异分析的方法"
+knitr::include_graphics("https://vnote-1251564393.cos.ap-chengdu.myqcloud.com/picgo/20260130142541503.png")
+```
+
+---
+
+{{< include microtable.qmd >}}
+
+
+
+## 实现
+
+
+
+### LEFSe 方法
+
+使用 LEFSe 方法分析不同 `genetic_group` 之间的群落差异。
+
+```{r}
+t1 = trans_diff$new(dataset = mt, method = "lefse", alpha = 0.05, group = "treatment", p_adjust_method = "none")
+
+t1$res_diff
+```
+
+差异分类群。
+
+```{r}
+# we show 20 taxa with the highest LDA (log10)
+t1$plot_diff_bar(use_number = 1:20)
+```
+
+误差线图。
+
+```{r}
+t1$plot_diff_abund(plot_type = "errorbar")
+```
+
+使用支系图显示差异物种。
+
+```{r}
+# t1$plot_diff_cladogram(use_taxa_num = 200, use_feature_num = 50, clade_label_level = 5)
+```
+
+
+### 随机森林方法
+
+```{r}
+library(randomForest)
+# use Genus level for parameter taxa_level, if you want to use all taxa, change to "all"
+# nresam = 1 and boots = 1 represent no bootstrapping and use all samples directly
+t1 = trans_diff$new(dataset = mt, method = "rf", taxa_level = "Genus")
+
+t1$plot_diff_bar(use_number = 1:20)
+```
+
+```{r}
+t1$plot_diff_abund(plot_type = "errorbar")
+```
+
+### ANCOMBC2 方法
+
+ANCOM-BC2 是一种专为微生物组数据设计的统计方法，它通过估计并校正样本特异性的抽样偏倚，解决了测序数据因总读长限制导致的**组成性（Compositionality）**问题，从而能更准确地推断物种绝对丰度的差异，并在兼顾高灵敏度的同时有效控制假阳性。
+
+```{r}
+t1 = trans_diff$new(dataset = mt, method = "ancombc2", taxa_level = "OTU", filter_thres = 0.01)
+
+t1$plot_diff_bar(heatmap_cell = "P.adj", heatmap_sig = "Significance", heatmap_x = "Factors", heatmap_y = "Taxa")
+```
+
+
+```{r}
+t2 = trans_diff$new(dataset = mt, method = "lefse", group = "treatment")
+
+t2$res_diff
+t2$plot_diff_abund(plot_type = "errorbar")
+```
+
+## 结果解读

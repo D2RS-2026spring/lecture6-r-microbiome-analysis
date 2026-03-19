@@ -1,2 +1,5 @@
 .DS_Store
 *.gz
+*_files/
+_book/
+.quarto/

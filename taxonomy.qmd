@@ -1,0 +1,45 @@
+# 群落结构分析
+
+
+{{< include microtable.qmd >}}
+
+
+## 主要的分类群
+
+### Phylum 水平
+
+计算门水平的物种丰度。
+
+```{r}
+t1 = trans_abund$new(dataset = mt, taxrank = "Phylum")
+```
+
+绘制 barplot。
+
+```{r}
+t1$plot_bar(xtext_angle = 45)
+```
+
+### Class 水平
+
+计算属水平的物种丰度。
+
+```{r}
+t1 = trans_abund$new(dataset = mt, taxrank = "Class")
+```
+
+绘制 barplot。
+
+```{r}
+t1$plot_bar(xtext_angle = 45)
+```
+
+
+### Heatmap
+
+使用 `pheatmap` 绘制热图，显示不同类型样品中的菌群差异。
+
+```{r}
+t1 = trans_abund$new(dataset = mt, taxrank = "Genus")
+t1$plot_heatmap(pheatmap = TRUE)
+```

@@ -1,0 +1,95 @@
+# β 多样性
+
+## 概述
+
+
+## 流程
+
+
+{{< include microtable.qmd >}}
+
+
+## 实现
+
+### 计算多样性指标
+
+抽平后，使用 `cal_betadiv()` 函数计算常用的指标。
+
+```{r}
+mt$cal_betadiv()
+```
+
+### PCoA 分析
+
+使用 `trans_alpha` 类来关联数据和分组信息（`type`）。
+
+```{r}
+t1 = trans_beta$new(dataset = mt, group = "treatment", measure = "bray")
+t1$cal_ordination(method = "PCoA")
+```
+
+绘制 PCoA 分析结果（按照 `type` 分组）。
+
+```{r}
+# plot the PCoA result with confidence ellipse
+t1$plot_ordination(plot_color = "type", plot_type = c("point", "ellipse"))
+```
+
+```{r}
+# plot the PCoA result with confidence ellipse
+t1$plot_ordination(plot_color = "place", plot_type = c("point", "ellipse"))
+```
+
+绘制 PCoA 分析结果（按照 `provided_by` 分组）。
+
+```{r}
+t1$plot_ordination(plot_color = "provided_by", plot_shape = "provided_by", plot_type = c("point", "ellipse"))
+```
+
+### NMDS 分析
+
+使用 `trans_alpha` 类来关联数据和分组信息（`type`）。
+
+```{r}
+#| message: false
+#| warning: false
+t1 = trans_beta$new(dataset = mt, group = "treatment", measure = "bray")
+t1$cal_ordination(method = "NMDS")
+t1$plot_ordination(plot_color = "type", plot_type = c("point", "ellipse"))
+```
+
+
+### 组间距离分析
+
+使用 `plot_group_distance()` 方法来绘制图片。
+
+```{r}
+t1 = trans_beta$new(dataset = mt, group = "treatment", measure = "bray")
+t1$cal_group_distance(within_group = TRUE)
+t1$cal_group_distance_diff(method = "wilcox")
+p1 = t1$plot_group_distance()
+```
+
+
+按照自交系和农家种的区分。
+
+```{r}
+t1 = trans_beta$new(dataset = mt, group = "treatment", measure = "bray")
+t1$cal_group_distance(within_group = TRUE)
+t1$cal_group_distance_diff(method = "wilcox")
+p2 = t1$plot_group_distance()
+```
+
+拼合呈一幅图片。
+
+```{r}
+#| label: fig-group-distance-combined
+#| fig-cap: "组间距离分析结果"
+wrap_plots(p1, p2, widths = c(3, 1))
+```
+
+## 💡 小提示
+
+**microeco** 包的使用文档参见：<https://chiliubio.github.io/microeco_tutorial>。
+
+- The analysis referred to the beta diversity in this class mainly include ordination, group distance, clustering and manova.

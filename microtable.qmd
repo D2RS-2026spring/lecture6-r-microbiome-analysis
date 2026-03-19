@@ -1,0 +1,92 @@
+## 构建 microtable 对象
+
+这里使用 `microeco` 软件包进行数据分析。
+
+首先需要从数据保存的目录读取数据，并构建 `microtable` 对象。
+
+```{r}
+PATH = "data/amplicon/processed"
+list.files(PATH, full.names = TRUE)
+```
+
+```{r}
+metadata_file  = file.path(PATH, "metadata.csv")
+otu_table_file = file.path(PATH, "asvtab.csv")
+tax_table_file = file.path(PATH, "taxtab.csv")
+sequence_file  = file.path(PATH, "asv.fasta")
+```
+
+### 载入包
+
+```{r}
+#| warning: false
+library(tidyverse)
+library(microeco)
+
+theme_set(theme_bw())
+```
+
+### OTU 表
+
+```{r}
+otu_table = read_csv(otu_table_file)
+otu_table = column_to_rownames(otu_table, var = names(otu_table)[1])
+```
+
+在 `microeco` 包（以及大多数 R 语言生物信息包）的规范中，`microtable` 对 `otu_table` 的格式有严格要求：**行必须是 Taxa（ASV/OTU），列必须是 Samples**。
+
+如果你的数据正好反过来了（行是样品，列是 ASV），需要在传入 `otu_table` 之前，使用 `t()` 函数对其进行转置，并确保它仍然是一个 `data.frame`。
+
+```{r}
+otu_table <- as.data.frame(t(otu_table))
+```
+
+为了让你直观理解 `microtable` 的结构逻辑，可以参考下图的对应关系：
+
+* **OTU Table**: 行名必须对接 **Taxonomy Table** 的行名（即 ASV ID）。
+* **OTU Table**: 列名必须对接 **Sample Table** 的行名（即 Sample ID）。
+
+
+### Sample 表
+
+```{r}
+sample_table = read_csv(metadata_file)
+sample_table = column_to_rownames(sample_table, var = names(sample_table)[1])
+```
+
+### Taxonomy 表
+
+```{r}
+taxon_table = read_csv(tax_table_file)
+taxon_table = column_to_rownames(taxon_table, var = names(taxon_table)[1])
+```
+
+
+### 构建对象
+
+构建 `microtable` 对象。
+
+```{r}
+mt = microtable$new(otu_table = otu_table, sample_table = sample_table, tax_table = taxon_table)
+mt
+```
+
+
+处理 Taxonmic 表格中的 `NA` 值。
+
+* 删掉 `Phylum == NA` 的 ASV（根本没比对上的垃圾序列）。
+
+```{r}
+mt$tax_table = subset(mt$tax_table, !is.na(Phylum))
+mt$tidy_dataset()
+```
+
+* 为未知的 Genus 填充数据（自上级非 NA）。
+
+```{r}
+# 该函数会自动查找分类表中的缺失值并填充
+mt$tax_table <- tidy_taxonomy(mt$tax_table)
+
+# 填充完成后，运行 tidy_dataset 同步一下
+mt$tidy_dataset()
+```

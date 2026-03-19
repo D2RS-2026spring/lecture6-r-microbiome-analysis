@@ -1,0 +1,281 @@
+# 网络分析 {#sec-network-analysis}
+
+
+## 概述
+
+
+
+## 流程
+
+在 `microeco` 软件分析包中，网络分析主要是通过 `trans_network` 类来实现的。其分析方法可以概括为以下几个核心步骤：
+
+
+```{r}
+#| echo: false
+#| label: fig-mt-network-analysis
+#| fig-cap: "使用 microeco 包进行微生物网络分析的流程"
+knitr::include_graphics("https://vnote-1251564393.cos.ap-chengdu.myqcloud.com/picgo/20260131122057625.png")
+```
+
+
+### 对象的初始化 (`trans_network$new`)
+
+首先，将标准化的 `microtable` 对象（包含物种丰度、元数据等）输入到 `trans_network` 类中。这是整个网络分析的起点，用于构建分析所需的原始数据结构。
+
+### 网络构建与计算 (`cal_network`)
+
+这是流程中的关键步骤（图中红色框）：
+
+* **计算相关性：** 支持多种算法（如 Spearman、Pearson、SparCC 等）来计算物种间的共发生关系。
+* **过滤：** 通过设置相关系数阈值（R值）和显著性水平（P值）来筛选具有统计学意义的边，最终生成网络计算结果。
+
+### 网络拓扑特征提取 (`res_network`)
+
+计算完成后，结果存储在 `res_network` 中，由此延伸出多种分析维度：
+
+* **拓扑属性分析：** 使用 `cal_network_attr` 计算全局属性（如密度、连通度）；`cal_powerlaw` 验证网络是否符合幂律分布；`cal_eigen` 计算特征向量。
+* **模块化分析：** 通过 `cal_module` 算法将复杂的网络划分为不同的功能模块。
+
+
+### 结果展示与进一步挖掘
+
+* **可视化：** * **R 绘图：** 使用 `plot_network` 直接在 R 环境中生成静态或交互式图形。
+* **外部工具：** 使用 `save_network` 将数据导出为 `.gexf` 等格式，以便在 **Gephi** 等专业网络软件中进行精美渲染。
+* **物种角色识别：** 通过 `get_node_table` 获取节点信息，进而使用 `plot_taxa_roles` 识别网络中的核心物种（如 Keystone taxa）。
+* **子网络提取：** 利用 `subset_network` 针对特定样本组或模块进行深入剖析。
+
+
+
+{{< include microtable.qmd >}}
+
+
+## 实现
+
+
+### 相关性方法
+
+计算相关系数。
+
+```{r}
+#| label: correlation-init
+t1 = trans_network$new(dataset = mt, cor_method = "spearman", filter_thres = 0.001, tax_level = "Genus")
+```
+
+构建网络。
+
+```{r}
+#| label: correlation-calculate
+t1$cal_network(COR_p_thres = 0.01, COR_cut = 0.5, COR_optimization = TRUE)
+```
+
+```{r}
+#| label: correlation-module-plot
+t1$cal_module()
+t1$plot_network(method = "ggraph", node_label = "Genus", node_color = "Genus")
+```
+
+计算网络属性。
+
+```{r}
+#| label: network-attributes
+# calculate network attributes
+t1$cal_network_attr()
+```
+
+划分网络模块。
+
+```{r}
+#| label: network-module
+t1$cal_module(method = "cluster_fast_greedy")
+```
+
+保存网络为 `*.gexf` 格式。
+
+```{r}
+#| label: save-network
+# require rgexf package to be installed
+t1$save_network(filepath = "network.gexf")
+```
+
+获取节点、边和邻接矩阵（及其属性）。
+
+```{r}
+#| label: get-network-tables
+# get node properties
+t1$get_node_table(node_roles = TRUE)
+
+# get edge properties
+t1$get_edge_table()
+
+# return t1$res_edge_table 
+t1$get_adjacency_matrix()
+```
+
+绘制节点分类，分别考虑模块内连通性和模块间连通性。
+
+
+```{r}
+#| label: plot-taxa-roles
+# add_label = TRUE can be used to directly add text label for points
+t1$plot_taxa_roles(use_type = 1)
+```
+
+`subset_network()` 函数可以用于从网络中提取这些节点之间的一部分节点和边。
+
+```{r}
+#| label: subset-network
+# extract a sub network that contains all nodes in module M1
+t1$subset_network(node = t1$res_node_table %>% base::subset(module == "M1") %>% rownames, rm_single = TRUE)
+# return a new network with igraph class
+# extract sub network in which all edge labels are "+", i.e. positive edges
+t1$subset_network(edge = "+")
+```
+
+函数 `cal_sum_links()` 可以计算从一个分类到另一个分类或同一分类内的链接（边）数量。函数 `plot_sum_links()` 用于展示函数 `cal_sum_links()` 的结果。这对于快速查看不同分类之间或同一分类内有多少节点相连接非常有用。
+
+
+### 其它方法
+
+```{r}
+#| label: bray-curtis-network
+# use Bray–Curtis index (1-dissimilarity)
+t1 <- trans_network$new(dataset = mt, cor_method = "bray", filter_thres = 0.001)
+t1$cal_network(network_method = "COR")
+t1$cal_module()
+t1$plot_network(node_color = "Genus", node_label = "Genus")
+```
+
+```{r}
+#| label: pearson-network
+# Pearson correlation
+t1 <- trans_network$new(dataset = mt, cor_method = "pearson", filter_thres = 0.001)
+t1$cal_network()
+t1$cal_module()
+t1$plot_network()
+```
+
+### WGCNA 方法
+
+**WGCNA** (Weighted Gene Co-expression Network Analysis) 是一种用于描述不同样本间基因关联模式的系统生物学方法，通过构建**加权基因共表达网络**，将成千上万个基因按照表达模式聚类成若干个模块（Modules），并进一步分析模块与临床表型（如疾病状态、环境因子）之间的相关性，从而识别出在生物学过程中起关键调控作用的核心基因（Hub genes）。
+
+```{r}
+#| label: wgcna-pearson
+library(WGCNA)
+
+# Pearson correlation using WGCNA package
+t1 <- trans_network$new(dataset = mt, cor_method = "pearson", use_WGCNA_pearson_spearman = TRUE, filter_thres = 0.001)
+t1$cal_network()
+t1$cal_module()
+t1$plot_network()
+```
+
+
+```{r}
+#| label: wgcna-spearman
+# Spearman correlation using WGCNA package
+t1 <- trans_network$new(dataset = mt, cor_method = "spearman", use_WGCNA_pearson_spearman = TRUE, filter_thres = 0.001)
+t1$cal_network()
+t1$cal_module()
+t1$plot_network()
+```
+
+
+### NetCoMi 方法
+
+**NetCoMi** (Network Comparison of Microbiome data) 是一个专门用于微生物组数据**网络构建、比较和差异分析**的 R 包，它集成了从数据处理、多种关联计算算法（如 SparCC, SPIEC-EASI）到网络拓扑属性评估的完整流程，其核心特色在于能通过统计学检验（如置换检验）对比不同组别间网络结构的显著性差异，帮助研究者揭示微生物关联模式在不同环境或处理下的动态变化。
+
+- `filter_thres`：相对丰度阈值。
+- `COR_p_thru`：P 值阈值。
+- `COR_cut`：相关系数阈值。
+
+```{r}
+#| label: netcomi-pearson
+library("NetCoMi")
+# Pearson correlation using NetCoMi package; install it from https://github.com/stefpeschel/NetCoMi
+t1 <- trans_network$new(dataset = mt, cor_method = "pearson", use_NetCoMi_pearson_spearman = TRUE, filter_thres = 0.001)
+t1$cal_network(COR_p_thru = 0.05, COR_cut = 0.1)
+t1$cal_module()
+t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
+```
+
+```{r}
+#| label: netcomi-spearman
+# Spearman correlation using NetCoMi package
+t1 <- trans_network$new(dataset = mt, cor_method = "spearman", use_NetCoMi_pearson_spearman = TRUE, filter_thres = 0.001)
+t1$cal_network(COR_p_thru = 0.05, COR_cut = 0.1)
+t1$cal_module()
+t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
+```
+
+
+```{r}
+#| label: netcomi-sparcc
+# SparCC method, from NetCoMi package; https://github.com/stefpeschel/NetCoMi
+t1 <- trans_network$new(dataset = mt, cor_method = "sparcc", use_sparcc_method = "NetCoMi", filter_thres = 0.001)
+t1$cal_network(COR_p_thru = 0.05, COR_cut = 0.1)
+t1$cal_module()
+t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
+```
+
+```{r}
+#| label: netcomi-cclasso
+# CCLasso method based on NetCoMi package
+t1 <- trans_network$new(dataset = mt, cor_method = "cclasso", filter_thres = 0.001)
+t1$cal_network(COR_p_thru = 0.05, COR_cut = 0.001)
+t1$cal_module()
+t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
+```
+
+
+```{r}
+#| label: netcomi-ccrepe
+library(ccrepe)
+
+# CCREPE method based on NetCoMi package
+t1 <- trans_network$new(dataset = mt, cor_method = "ccrepe", filter_thres = 0.001, taxa_level = "Genus")
+t1$cal_network(COR_cut = 0.2)
+t1$cal_module()
+t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
+```
+
+### SPIEC-EASI 方法
+
+SPIEC-EASI（用于生态关联推断的稀疏逆协方差估计）是 SpiecEasi R 包的一种方法，基于图模型提供了两种网络构建方法，这些方法依赖于稀疏邻域和逆协方差选择的算法。有关包的安装，请参见 https://github.com/zdk123/SpiecEasi。根据我们的测试经验，当样本数量很大（例如数百到数千）时，`SpiecEasi_method = 'glasso'` 的计算速度非常慢。
+
+```{r}
+#| label: spieceasi-mb
+library(SpiecEasi)
+t1 = trans_network$new(dataset = mt, cor_method = NULL, taxa_level = "OTU", filter_thres = 0.001)
+t1$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
+t1$cal_module()
+t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
+```
+
+```{r}
+#| label: spieceasi-sparcc
+# SparCC method, from SpiecEasi package, see https://github.com/zdk123/SpiecEasi for the installation
+t1 = trans_network$new(dataset = mt, cor_method = "sparcc", use_sparcc_method = "SpiecEasi", filter_thres = 0.001, taxa_level = "Genus")
+t1$cal_network(COR_cut = 0.2)
+t1$cal_module()
+t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
+```
+
+### beemStatic 方法
+
+我们要展示的最后一种方法来自 `beemStatic` 包（Li et al. 2021）。该方法可以应用于横截面数据集，以基于广义洛特卡-沃尔泰拉模型推断交互网络，该模型通常用于微生物时间序列数据。因此，这种方法得到的网络是有向网络。请访问 https://github.com/CSB5/BEEM-static 以安装 R `beemStatic` 包。
+
+
+```{r}
+#| label: beemstatic-network
+library(beemStatic)
+
+t1 = trans_network$new(dataset = mt, cor_method = NULL, taxa_level = "OTU", filter_thres = 0.001)
+
+# require beemStatic package installed
+t1$cal_network(network_method = "beemStatic")
+
+# use cluster_walktrap method for the directed network
+t1$cal_module(method = "cluster_walktrap")
+
+t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
+```

@@ -1,0 +1,344 @@
+# 测序数据预处理
+
+
+采用 DADA2 对公司返回的数据进行分析注释。
+
+## 加载需要的包
+
+```{r}
+#| label: load-packages
+library(dada2)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(stringr)
+library(tibble)
+```
+
+
+## 检查实验数据
+
+这些 fastq 文件是通过 2x250 Illumina Miseq 扩增子对 16S rRNA 基因的 V4 区进行测序生成的，这些样本来自实验。现在，只需将它们视为要处理的配对端 fastq 文件。
+
+```{r}
+#| label: check-sequence-files
+
+# 设置文件所在的路径
+PATH_SEQENCING_RAW <- "data/amplicon/raw/"
+
+# 查找并排序 R1 和 R2 文件
+fnFs <- sort(list.files(PATH_SEQENCING_RAW, pattern="_R1.f.*q.gz", full.names = TRUE))
+fnRs <- sort(list.files(PATH_SEQENCING_RAW, pattern="_R2.f.*q.gz", full.names = TRUE))
+
+c(fnFs, fnRs) |> basename() |> sort()
+```
+
+### 生成 metadata
+
+文件名包含 Sample ID，这里直接从 sample ID 获取实验处理。
+
+```{r}
+sample.names = fnFs |> 
+    basename() |> 
+    str_extract("Sep25.*_[0-9]") |> 
+    str_remove("^Sep25")
+
+meta = tibble(sample_id = sample.names) |> 
+    tidyr::separate(sample_id, c("treatment", "rep"), sep = "_", remove = FALSE)
+```
+
+
+### 查看文件的测序质量
+
+测序质量的分布是一个重要的指标，通常我们会查看前 3 个样本的测序质量[@fig-quality-profile]。由图可知：
+
+- R1 的测序治疗较 R2 差，R2 的测序质量平均值都在 30 以上，且没有明显的波动；
+- 在 225 bp 以后，序列的整体长度会有明显的下降。
+
+```{r}
+#| label: fig-quality-profile
+#| fig-cap: 前3个的测序质量
+#| fig-asp: 0.8
+p1 = plotQualityProfile(fnFs[1:3]) +
+    facet_wrap(~file, ncol=1)
+
+p2 = plotQualityProfile(fnRs[1:3]) +
+    facet_wrap(~file, ncol=1) +
+    ylab("")
+
+plot_grid(p1, p2, ncol=2)
+```
+
+测序质量得分在每个位置的分布以灰度热图显示，其中深色对应更高的频率。绘制的线条显示位置统计数据：绿色为平均值，橙色为中位数，虚线橙色为第25和第75百分位数。如果序列长度不同，将绘制一条红线，显示至少延伸到该位置的读数百分比。
+
+## 过滤和修剪
+
+### 设置过滤文件的产生路径和名称
+
+```{r}
+# Place filtered files in filtered/ subdirectory
+filtFs <- file.path(PATH_SEQENCING_RAW, "filtered", paste0(sample.names, "_F_filt.fq.gz"))
+filtRs <- file.path(PATH_SEQENCING_RAW, "filtered", paste0(sample.names, "_R_filt.fq.gz"))
+names(filtFs) <- sample.names
+names(filtRs) <- sample.names
+```
+
+### 对原始数据进行过滤
+
+```{r}
+#| label: filter-and-trim
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, 
+              maxN = 0, maxEE = c(2,4), truncQ = 0, 
+              rm.phix = FALSE, 
+              truncLen = c(200,200),
+              compress = TRUE, 
+              multithread = TRUE)
+head(out)
+```
+
+### 估计测序错误率
+
+在 DADA2 中，`learnErrors` 是整个流程的关键步骤之一，其目的是**学习测序错误模型**，这是 DADA2 高精度去噪能力的基础。
+
+高通量测序（如 Illumina）在读取 DNA 序列时会出现错误，比如碱基错配（substitution）。DADA2 的目标是区分这些**测序错误**与真实的**生物变异**（例如不同的细菌或物种）。
+
+为了做到这一点，DADA2 需要知道测序错误是如何分布的，例如：
+
+* 一个“A”被错误读成“T”的概率有多大？
+* 在不同的测序质量分数下，错误概率如何变化？
+
+`learnErrors(filtFs)` 会根据过滤后的序列数据（如 `filtFs`）统计这些碱基替换的发生频率，结合质量分数，**拟合出一个错误率矩阵**（error rate matrix），这个矩阵是后续 **序列去噪（denoising）** 的基础。
+
+只有有了这个模型，DADA2 才能：
+
+1. 判断某条序列的观察频次是否能用测序错误解释；
+2. 决定是否要把这条序列当作真实变体（ASV）保留下来。
+
+对同一台机器、同一批次的样本，可以用一个共享的错误模型。如果你有很多样本，也可以选择只在一部分样本中学习错误，再应用到其他样本中。
+
+```{r}
+#| label: learn-errors
+# 学习正向和反向的错误模型
+errF <- learnErrors(filtFs, multithread = TRUE)
+errR <- learnErrors(filtRs, multithread = TRUE)
+```
+
+
+
+```{r}
+#| label: fig-error-model-forward
+#| fig-cap: 正向错误模型
+#| fig-subcap: 红色线是理论上的错误率，黑色点是观测错误率，黑色线是拟合（估计）的错误率
+plotErrors(errF, nominalQ = TRUE)
+```
+
+
+```{r}
+#| label: fig-error-model-reverse
+#| fig-cap: 反向错误模型
+plotErrors(errR, nominalQ = TRUE)
+```
+
+
+### 序列去重
+
+```{r}
+#| label: dereplication
+# 去除重复序列
+# 仅仅保留重复序列中的一条序列，以在后续序列处理中节省计算资源
+derepFs <- derepFastq(filtFs)
+derepRs <- derepFastq(filtRs)
+```
+
+
+### 根据模型进行匹配
+
+```{r}
+#| label: run-dada
+dadaFs <- dada(filtFs, err=errF, multithread = TRUE, verbose = FALSE)
+dadaRs <- dada(filtRs, err=errR, multithread = TRUE, verbose = FALSE)
+```
+
+
+```{r}
+dadaFs[[1]]
+```
+
+## ASV 表
+
+### 序列拼接
+
+```{r}
+#| label: merge-pairs
+mergers2 <- mergePairs(dadaFs, derepFs, dadaRs, derepRs)
+```
+
+下面，查看合并后的结果。
+
+- `$abundance`：对应这个正向/反向序列组合的读数数量。
+- `$sequence`：合并后的序列。
+- `$forward`：正向去噪序列的索引。
+- `$reverse`：反向去噪序列的索引。
+- `$nmatch`：重叠区域中匹配的核苷酸数量。
+- `$nmismatch`：重叠区域中不匹配的核苷酸数量。
+- `$nindel`：重叠区域中的插入/缺失数量。
+- `$prefer`：用于重叠区域的序列来源。1=正向；2=反向。
+- `$accept`：如果正向和反向去噪序列之间的重叠至少为minOverlap且最多有maxMismatch差异，则为TRUE。否则为FALSE。
+
+```{r}
+# 查看合并后的序列
+head(mergers2[[1]]) |> as_tibble()
+```
+
+### 生成 ASV 表
+
+```{r}
+#| label: make-sequence-table
+
+# 生成 ASV 表
+seqtab <- makeSequenceTable(mergers2)
+dim(seqtab)
+```
+
+### 选择目标长度的序列
+
+**515F 和 806R** 理论上扩增区域 **约 253 bp**（不含引物序列）或者 **293 bp**（含引物序列）。
+
+* 515F：GTGYCAGCMGCCGCGGTAA
+* 806R：GGACTACNVGGGTWTCTAAT
+
+
+使用 515F–806R 进行 16S V4 区扩增，拼接后得到的序列是完全正常、符合设计预期的[@fig-seq-length-distribution]。
+
+```{r}
+#| label: fig-seq-length-distribution
+#| fig-cap: 拼接后 ASV 序列的长度分布
+# 查看序列长度分布
+table(nchar(getSequences(seqtab))) |> plot(type = 'l') 
+```
+ 
+
+```{r}
+#| label: filter-seq-by-length
+# 筛选目标长度的序列
+seqtab2 <- seqtab[, nchar(getSequences(seqtab)) %in% 290:295]
+# 检查筛选后的维度
+dim(seqtab2)
+```
+
+
+### 去嵌合体
+
+```{r}
+#| label: remove-chimeras
+
+# 去除嵌合体
+seqtab.nochim <- removeBimeraDenovo(seqtab2, method="pooled", multithread=F, verbose=TRUE)
+
+# 统计去除嵌合体后的 ASV 数量
+dim(seqtab.nochim)
+
+# 统计去除嵌合体前后的 ASV 数量占比
+sum(seqtab.nochim)/sum(seqtab)
+```
+
+
+### 测序数据处理情况追踪
+
+```{r}
+#| label: track-sequence-processing
+
+# 求和函数
+getN <- function(x) sum(getUniques(x))
+
+# 合并各样本分步数据量
+track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers2, getN), rowSums(seqtab.nochim))
+# If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)
+# 修改列名
+colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
+# 行名修改为样本名
+rownames(track) <- sample.names
+# 统计结果预览
+head(track)
+```
+
+## 分配分类
+
+### 分类注释
+
+```{r}
+#| label: assign-taxonomy
+
+SILAVA_DB_FILE = "data/silva/silva_nr99_v138.2_wSpecies_train_set.fa.gz"
+
+# 分配到属级别
+taxa <- assignTaxonomy(seqtab.nochim, SILVA_DB_FILE, multithread = TRUE, minBoot = 60)
+```
+
+
+
+```{r}
+# 打印结果
+taxa |> as_tibble()
+```
+
+
+## 保存结果
+
+### 保存 ASV 序列
+
+将 ASV 序列保存为 FASTA 格式，以便后续使用。
+
+```{r}
+asv_sequence <- getSequences(seqtab.nochim)
+```
+
+为序列指定唯一 ID。
+
+```{r}
+library(digest)
+get_dna_id = function(seq, length = 12){
+    hash = digest(seq, algo = "sha256", serialize = FALSE)
+    substr(hash, 1, length)
+}
+```
+
+```{r}
+# 生成 ASV ID
+asv_id = paste0("ASV", sapply(asv_sequence, get_dna_id))
+
+# 将数据框转换为 FASTA 格式
+asv_fasta = paste0(">", asv_id, "\n", asv_sequence)
+```
+
+```{r}
+#| eval: false
+# 保存为 FASTA 文件
+writeLines(asv_fasta, "data/amplicon/sep25-asv.fasta")
+```
+
+
+### 保存 ASV 表和分类表
+
+将 `seqtab.nochim` 和 `taxa` 保存为 CSV 文件，便于后续分析和共享。
+
+```{r}
+# ASV表格导出
+# 这里的 seqtab.nochim 是一个数值矩阵，行名是样本名称，列名是 ASV 序列
+colnames(seqtab.nochim) <- asv_id
+write.csv(seqtab.nochim, "data/amplicon/sep25-asvtab.csv")
+
+# 分类表格导出
+# 这里的 taxa 是一个文本矩阵，行名是 ASV 序列，列名是分类学层级
+rownames(taxa) <- asv_id
+write.csv(taxa, "data/amplicon/sep25-taxtab.csv")
+```
+
+## Session Info
+
+```{r}
+sessionInfo()
+```
+
+
+
