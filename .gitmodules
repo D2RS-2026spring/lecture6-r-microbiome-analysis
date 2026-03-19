@@ -1,0 +1,3 @@
+[submodule "microeco_tutorial"]
+	path = microeco_tutorial
+	url = git@github.com:ChiLiubio/microeco_tutorial.git

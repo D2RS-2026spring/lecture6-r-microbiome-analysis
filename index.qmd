@@ -13,7 +13,16 @@
 
 ## 分析流程概览
 
-本讲涵盖微生物组数据分析的完整流程：
+本讲涵盖微生物组数据分析的完整流程。下图展示了 `microeco` 包的整体分析框架：
+
+```{r}
+#| echo: false
+#| label: fig-microeco-framework
+#| fig-cap: "microeco 包的分析框架"
+knitr::include_graphics("microeco_tutorial/Images/microeco_framework.png")
+```
+
+### 本讲内容组织
 
 1. **测序数据预处理**（[第一章](preprocess.qmd)）：使用 DADA2 对原始测序数据进行质量控制、去噪和 ASV（Amplicon Sequence Variants）推断
 2. **构建 microtable 对象**（[第二章](microtable.qmd)）：将数据整理为 microeco 包所需的格式，建立标准化分析基础

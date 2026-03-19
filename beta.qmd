@@ -84,11 +84,13 @@ $$BC = 1 - \frac{2 \times 8}{25} = 1 - 0.64 = 0.36$$
 4. **组间比较**：使用 `cal_group_distance()` 和 `cal_manova()` 进行统计检验
 5. **可视化**：绘制排序图、距离箱线图等
 
-## 实现
-
+---
 
 {{< include microtable.qmd >}}
 
+---
+
+## 实现
 
 ### 计算 Beta 多样性距离矩阵
 
@@ -131,26 +133,16 @@ t1$cal_ordination(method = "PCoA")
 #| fig-height: 6
 
 # 绘制 PCoA 结果，带置信椭圆
-t1$plot_ordination(plot_color = "treatment", plot_shape = "treatment",
+t1$plot_ordination(plot_color = "treatment",
                    plot_type = c("point", "ellipse"))
 ```
 
 **图形解读**：
+
 - 点之间的距离反映样本间的 Bray-Curtis 相异度，距离越近表示群落越相似
 - 置信椭圆（95%）显示各组的离散程度，椭圆重叠程度反映组间差异程度
 - 轴标签中的百分比表示该轴解释的总体变异比例
 
-#### 按采样地点可视化
-
-```{r}
-#| label: fig-pcoa-place
-#| fig-cap: "PCoA 排序图（按采样地点着色）"
-#| fig-width: 8
-#| fig-height: 6
-
-t1$plot_ordination(plot_color = "place", plot_shape = "place",
-                   plot_type = c("point", "ellipse"))
-```
 
 ### NMDS 分析
 
@@ -169,6 +161,7 @@ t1$plot_ordination(plot_color = "treatment", plot_type = c("point", "ellipse"))
 ```
 
 **PCoA vs NMDS**：
+
 - PCoA 是**度量性**排序，保持距离关系的精确性
 - NMDS 是**非度量性**排序，更注重保持样本间的相对顺序，对非线性关系更稳健
 
@@ -191,6 +184,7 @@ t1$plot_group_distance(add = "mean")
 ```
 
 **组内距离的生物学意义**：
+
 - 反映组内样本的重复性和群落的稳定性
 - 组内距离小表明处理条件对群落的影响较为一致
 
@@ -207,6 +201,7 @@ t1$res_manova
 ```
 
 **结果解读**：
+
 - R² 表示处理因素解释的总变异比例
 - P-value 表示差异的显著性水平
 - 若 P < 0.05，说明处理组间的群落组成存在显著差异
@@ -231,6 +226,7 @@ t1$res_anosim
 ```
 
 **ANOSIM 结果解读**：
+
 - R 值范围：-1 到 1
 - R > 0 表示组间差异大于组内差异
 - R 接近 0 表示组间无显著差异
@@ -306,11 +302,8 @@ t1$res_anosim
 **局限性与注意事项**：
 
 1. **距离矩阵的选择**：不同距离指标可能给出略有不同的结果，建议尝试多种指标进行敏感性分析
-
 2. **样本量的影响**：小样本量（n < 5）时，统计检验的功效可能不足
-
 3. **组成性效应**：Beta 多样性基于相对丰度数据，存在组成性效应，解释时需谨慎
-
 4. **多重检验问题**：进行多组比较时，需要考虑 P 值校正
 
 ## 💡 小提示

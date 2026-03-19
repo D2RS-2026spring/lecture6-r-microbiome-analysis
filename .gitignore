@@ -1,5 +1,12 @@
 .DS_Store
 *.gz
 *_files/
+
+site_libs/
+
 _book/
+_freeze/
+
 .quarto/
+
+/.quarto/

@@ -1,6 +1,9 @@
 project:
   type: book
 
+execute: 
+  freeze: auto
+
 book:
   title: "Lecture 6: Microbiome Analysis with R"
   author: "高春辉"
@@ -8,7 +11,6 @@ book:
   chapters:
     - index.qmd
     - preprocess.qmd
-    - microtable.qmd
     - taxonomy.qmd
     - alpha.qmd
     - beta.qmd

@@ -269,8 +269,8 @@ head(track)
 ```{r}
 #| label: assign-taxonomy
 
-SILAVA_DB_FILE = "data/silva/silva_nr99_v138.2_wSpecies_train_set.fa.gz"
-
+SILVA_DB_FILE = "data/silva/silva_nr99_v138.2_wSpecies_train_set.fa.gz"
+ 
 # 分配到属级别
 taxa <- assignTaxonomy(seqtab.nochim, SILVA_DB_FILE, multithread = TRUE, minBoot = 60)
 ```
@@ -312,7 +312,6 @@ asv_fasta = paste0(">", asv_id, "\n", asv_sequence)
 ```
 
 ```{r}
-#| eval: false
 # 保存为 FASTA 文件
 writeLines(asv_fasta, "data/amplicon/sep25-asv.fasta")
 ```
@@ -333,12 +332,4 @@ write.csv(seqtab.nochim, "data/amplicon/sep25-asvtab.csv")
 rownames(taxa) <- asv_id
 write.csv(taxa, "data/amplicon/sep25-taxtab.csv")
 ```
-
-## Session Info
-
-```{r}
-sessionInfo()
-```
-
-
 
