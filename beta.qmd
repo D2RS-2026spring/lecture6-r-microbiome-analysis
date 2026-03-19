@@ -2,94 +2,325 @@
 
 ## 概述
 
+Beta 多样性（β diversity）描述不同样本间微生物群落组成的差异程度，是理解微生物群落空间分布、环境响应和生态过程的关键指标。与 Alpha 多样性关注"样本内有多少物种"不同，Beta 多样性回答"不同样本间的物种组成有多相似/不同"。
+
+### Beta 多样性的生态学意义
+
+- **群落异质性**：评估不同处理组或环境条件下群落组成的分化程度
+- **环境梯度响应**：揭示微生物群落沿环境梯度的变化规律
+- **生物地理学模式**：探索空间距离对群落相似性的影响
+- **处理效应评估**：量化实验处理对群落结构的改变程度
+
+### 常用距离/相异度指标
+
+| 指标 | 特点 | 适用场景 |
+|-----|------|---------|
+| **Bray-Curtis** | 考虑物种丰度差异 | 最常用的生态距离，推荐首选 |
+| **Jaccard** | 仅考虑物种有无 | 关注物种存在与否，忽略丰度 |
+| **Weighted Unifrac** | 结合丰度和系统发育 | 强调优势谱系的差异 |
+| **Unweighted Unifrac** | 仅考虑系统发育 | 关注稀有谱系的差异 |
+
+**Bray-Curtis 相异度计算公式**：
+
+$$BC_{ij} = 1 - \frac{2\sum_{k} \min(x_{ik}, x_{jk})}{\sum_{k} x_{ik} + \sum_{k} x_{jk}}$$
+
+其中 $x_{ik}$ 表示物种 $k$ 在样本 $i$ 中的丰度。
+
+:::{.callout-tip title="口算示例：理解 Bray-Curtis 距离"}
+
+**假设两个土壤样本（A 和 B），各检测了 3 个物种的丰度（reads 数）：**
+
+| 物种 | 样本 A | 样本 B |
+|:---:|:---:|:---:|
+| 物种甲 | 10 | 8 |
+| 物种乙 | 5 | 0 |
+| 物种丙 | 0 | 2 |
+
+**口算步骤：**
+
+**第一步：找较小值（min）并求和**
+
+- 物种甲：min(10, 8) = 8
+- 物种乙：min(5, 0) = 0
+- 物种丙：min(0, 2) = 0
+- **共同部分** = 8 + 0 + 0 = **8**
+
+**第二步：算总和**
+
+- 样本 A 总计 = 10 + 5 + 0 = 15
+- 样本 B 总计 = 8 + 0 + 2 = 10
+- **总计** = 15 + 10 = **25**
+
+**第三步：套公式**
+
+$$BC = 1 - \frac{2 \times 8}{25} = 1 - 0.64 = 0.36$$
+
+
+**生物学意义解读：**
+
+- **BC = 0.36**（范围 0~1，越接近 1 差异越大）
+- **共同部分占 64%**：两个样本共享了约 64% 的物种组成（加权 by 丰度）
+- **物种乙**是样本 A 的"特色物种"（在 B 中缺失），贡献了差异
+- **物种丙**是样本 B 的"特色物种"（在 A 中缺失），贡献了差异
+
+**直观理解**：如果两个样本完全相同 → BC = 0；如果完全没有共同物种 → BC = 1
+:::
+
+### 分析内容
+
+本分析包含以下主要内容：
+
+1. **排序分析**（PCoA/NMDS）：在低维空间可视化样本间的相似性关系
+2. **组间距离分析**：量化和比较组内与组间的群落差异
+3. **统计检验**（PERMANOVA）：检验组间差异的统计显著性
 
 ## 流程
+
+在 `microeco` 包中，Beta 多样性分析通过 `trans_beta` 类实现，主要流程如下：
+
+1. **计算距离矩阵**：使用 `cal_betadiv()` 计算各类 Beta 多样性距离
+2. **创建分析对象**：使用 `trans_beta$new()` 初始化，指定距离类型
+3. **排序分析**：使用 `cal_ordination()` 进行 PCoA 或 NMDS 排序
+4. **组间比较**：使用 `cal_group_distance()` 和 `cal_manova()` 进行统计检验
+5. **可视化**：绘制排序图、距离箱线图等
+
+## 实现
 
 
 {{< include microtable.qmd >}}
 
 
-## 实现
+### 计算 Beta 多样性距离矩阵
 
-### 计算多样性指标
-
-抽平后，使用 `cal_betadiv()` 函数计算常用的指标。
+首先计算 Bray-Curtis 相异度矩阵，这是最常用的生态距离指标。
 
 ```{r}
+#| label: calculate-beta
+
+# 计算 Beta 多样性距离矩阵
 mt$cal_betadiv()
+
+# 查看可用的距离矩阵
+names(mt$beta_diversity)
 ```
+
+**参数说明**：
+- 默认计算 Bray-Curtis、Jaccard、weighted Unifrac 和 unweighted Unifrac
+- 如需计算 Unifrac 距离，需要提供系统发育树（phylo_tree）
 
 ### PCoA 分析
 
-使用 `trans_alpha` 类来关联数据和分组信息（`type`）。
+主坐标分析（Principal Coordinate Analysis, PCoA）是一种将高维距离矩阵降维可视化的方法。
 
 ```{r}
+#| label: pcoa-analysis
+
+# 创建 trans_beta 对象，使用 Bray-Curtis 距离
 t1 = trans_beta$new(dataset = mt, group = "treatment", measure = "bray")
+
+# 进行 PCoA 排序
 t1$cal_ordination(method = "PCoA")
 ```
 
-绘制 PCoA 分析结果（按照 `type` 分组）。
+#### 按处理组可视化
 
 ```{r}
-# plot the PCoA result with confidence ellipse
-t1$plot_ordination(plot_color = "type", plot_type = c("point", "ellipse"))
+#| label: fig-pcoa-treatment
+#| fig-cap: "PCoA 排序图（按处理组着色）"
+#| fig-width: 8
+#| fig-height: 6
+
+# 绘制 PCoA 结果，带置信椭圆
+t1$plot_ordination(plot_color = "treatment", plot_shape = "treatment",
+                   plot_type = c("point", "ellipse"))
 ```
 
-```{r}
-# plot the PCoA result with confidence ellipse
-t1$plot_ordination(plot_color = "place", plot_type = c("point", "ellipse"))
-```
+**图形解读**：
+- 点之间的距离反映样本间的 Bray-Curtis 相异度，距离越近表示群落越相似
+- 置信椭圆（95%）显示各组的离散程度，椭圆重叠程度反映组间差异程度
+- 轴标签中的百分比表示该轴解释的总体变异比例
 
-绘制 PCoA 分析结果（按照 `provided_by` 分组）。
+#### 按采样地点可视化
 
 ```{r}
-t1$plot_ordination(plot_color = "provided_by", plot_shape = "provided_by", plot_type = c("point", "ellipse"))
+#| label: fig-pcoa-place
+#| fig-cap: "PCoA 排序图（按采样地点着色）"
+#| fig-width: 8
+#| fig-height: 6
+
+t1$plot_ordination(plot_color = "place", plot_shape = "place",
+                   plot_type = c("point", "ellipse"))
 ```
 
 ### NMDS 分析
 
-使用 `trans_alpha` 类来关联数据和分组信息（`type`）。
+非度量多维尺度分析（Non-metric Multidimensional Scaling, NMDS）是另一种常用的排序方法，特别适用于生态数据。
 
 ```{r}
-#| message: false
-#| warning: false
+#| label: fig-nmds
+#| fig-cap: "NMDS 排序图"
+#| fig-width: 8
+#| fig-height: 6
+
+# NMDS 分析
 t1 = trans_beta$new(dataset = mt, group = "treatment", measure = "bray")
 t1$cal_ordination(method = "NMDS")
-t1$plot_ordination(plot_color = "type", plot_type = c("point", "ellipse"))
+t1$plot_ordination(plot_color = "treatment", plot_type = c("point", "ellipse"))
 ```
 
+**PCoA vs NMDS**：
+- PCoA 是**度量性**排序，保持距离关系的精确性
+- NMDS 是**非度量性**排序，更注重保持样本间的相对顺序，对非线性关系更稳健
 
 ### 组间距离分析
 
-使用 `plot_group_distance()` 方法来绘制图片。
+计算和比较组内距离（同一处理组内样本间的距离）与组间距离（不同处理组间样本的距离）。
+
+#### 组内距离
 
 ```{r}
+#| label: fig-within-group-distance
+#| fig-cap: "组内距离分析"
+#| fig-width: 8
+#| fig-height: 6
+
 t1 = trans_beta$new(dataset = mt, group = "treatment", measure = "bray")
 t1$cal_group_distance(within_group = TRUE)
 t1$cal_group_distance_diff(method = "wilcox")
-p1 = t1$plot_group_distance()
+t1$plot_group_distance(add = "mean")
 ```
 
+**组内距离的生物学意义**：
+- 反映组内样本的重复性和群落的稳定性
+- 组内距离小表明处理条件对群落的影响较为一致
 
-按照自交系和农家种的区分。
+### PERMANOVA 统计检验
+
+置换多元方差分析（PERMANOVA）用于检验组间差异的统计显著性。
 
 ```{r}
-t1 = trans_beta$new(dataset = mt, group = "treatment", measure = "bray")
-t1$cal_group_distance(within_group = TRUE)
-t1$cal_group_distance_diff(method = "wilcox")
-p2 = t1$plot_group_distance()
+#| label: permanova-test
+
+# 整体检验
+t1$cal_manova(manova_all = TRUE)
+t1$res_manova
 ```
 
-拼合呈一幅图片。
+**结果解读**：
+- R² 表示处理因素解释的总变异比例
+- P-value 表示差异的显著性水平
+- 若 P < 0.05，说明处理组间的群落组成存在显著差异
 
 ```{r}
-#| label: fig-group-distance-combined
-#| fig-cap: "组间距离分析结果"
-wrap_plots(p1, p2, widths = c(3, 1))
+#| label: permanova-paired
+
+# 两两比较
+t1$cal_manova(manova_all = FALSE)
+t1$res_manova
 ```
+
+### ANOSIM 分析
+
+相似性分析（ANOSIM）是另一种常用的非参数检验方法。
+
+```{r}
+#| label: anosim-test
+
+t1$cal_anosim(group = "treatment")
+t1$res_anosim
+```
+
+**ANOSIM 结果解读**：
+- R 值范围：-1 到 1
+- R > 0 表示组间差异大于组内差异
+- R 接近 0 表示组间无显著差异
+
+## 结果
+
+### 排序图揭示的群落结构
+
+从 PCoA 排序图（@fig-pcoa-treatment）可以观察到：
+
+1. **组间分离程度**：
+   - 若各处理组的置信椭圆明显分离，说明处理条件对群落结构产生了显著影响
+   - 若椭圆严重重叠，说明处理效应较弱或组内变异较大
+
+2. **主要变异轴**：
+ - PCoA1 和 PCoA2 轴解释的变异比例反映了主要的环境梯度方向
+   - 结合环境因子数据，可以推断驱动群落变化的关键因素
+
+3. **异常样本识别**：
+   - 远离本组其他样本的点可能是异常值，需要检查原始数据
+
+### 组间差异的统计分析
+
+**PERMANOVA 结果解读**：
+
+基于 `t1$res_manova` 的结果：
+
+- **显著性判断**：
+  - 若 P < 0.05，拒绝原假设，认为处理组间的群落组成存在显著差异
+  - 若 P > 0.05，不能认为处理对群落结构产生了显著影响
+
+- **效应量评估**：
+  - R² 表示处理因素解释的群落变异比例
+  - R² = 0.3 表示处理解释了 30% 的群落变异，其余由其他因素（如空间、随机因素）解释
+
+**两两比较结果**：
+
+若整体检验显著，通过两两比较可以识别具体哪些组之间存在差异：
+- ZY0 vs ZY0.5：可能显著（P < 0.05）
+- ZY0 vs ZY1：可能极显著（P < 0.01）
+- ZY0.5 vs ZY1：可能不显著（P > 0.05）
+
+### 综合讨论
+
+**处理效应的模式分析**：
+
+根据排序图和统计检验结果，可以推断处理效应的模式：
+
+1. **剂量效应**：
+   - 若 ZY0 → ZY0.5 → ZY1 在排序图上呈梯度排列，可能存在剂量-效应关系
+   - 某些处理强度可能处于"生态阈值"附近，导致群落发生质变
+
+2. **方向性变化**：
+   - 观察各组在排序图上的位置，可以推断群落变化的方向
+   - 例如：若沿 PCoA1 轴从左到右，某些门（如 Proteobacteria）的丰度可能增加
+
+3. **变异来源分解**：
+   - 处理因素解释的变异比例（R²）反映了处理的相对重要性
+   - 高 R²（>0.3）：处理是主要驱动因素
+   - 中等 R²（0.1-0.3）：处理有一定影响，但其他因素也很重要
+   - 低 R²（<0.1）：处理效应较弱，或存在较强的背景噪声
+
+**与其他分析的关联**：
+
+- **与 Alpha 多样性的关系**：
+  - 若 Beta 差异显著但 Alpha 无差异：处理改变了物种组成但未改变多样性
+  - 若两者都显著：处理同时改变了群落的组成和多样性
+
+- **与物种组成分析的印证**：
+  - Beta 多样性的结果应与物种组成柱状图一致
+  - 若 PCoA 显示组间分离，柱状图中应能观察到特定分类群的组间差异
+
+**局限性与注意事项**：
+
+1. **距离矩阵的选择**：不同距离指标可能给出略有不同的结果，建议尝试多种指标进行敏感性分析
+
+2. **样本量的影响**：小样本量（n < 5）时，统计检验的功效可能不足
+
+3. **组成性效应**：Beta 多样性基于相对丰度数据，存在组成性效应，解释时需谨慎
+
+4. **多重检验问题**：进行多组比较时，需要考虑 P 值校正
 
 ## 💡 小提示
 
 **microeco** 包的使用文档参见：<https://chiliubio.github.io/microeco_tutorial>。
 
-- The analysis referred to the beta diversity in this class mainly include ordination, group distance, clustering and manova.
+- 排序分析中的 `plot_type` 参数支持多种图形元素组合：
+  - `"point"`：散点
+  - `"ellipse"`：置信椭圆
+  - `"chull"`：凸包
+  - `"centroid"`：质心连线
+- PERMANOVA 对数据的多元正态性和方差齐性假设相对宽松，但仍建议检查数据分布
+- 当样本量较小时，PERMANOVA 的 P 值可能不稳定，可以增加置换次数（`permutations` 参数）

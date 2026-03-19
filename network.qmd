@@ -1,14 +1,50 @@
 # 网络分析 {#sec-network-analysis}
 
-
 ## 概述
 
+微生物共现网络（Co-occurrence Network）分析通过推断微生物类群间的统计关联，揭示微生物群落内的潜在相互作用关系。网络分析将复杂的群落数据转化为直观的图结构，节点代表微生物类群，边代表类群间的关联（正相关或负相关）。
 
+### 网络分析的生态学意义
+
+- **相互作用推断**：正相关可能暗示互利共生、交叉喂养或共同的环境偏好；负相关可能暗示竞争、拮抗或生态位分化
+- **关键物种识别**：发现网络中的核心节点（Hub nodes）和关键物种（Keystone species）
+- **群落稳定性**：通过网络拓扑特征评估群落的稳定性和鲁棒性
+- **功能模块**：识别功能相关的微生物模块（Modules）
+
+### 网络构建方法
+
+| 方法 | 原理 | 特点 |
+|-----|------|------|
+| **相关性网络** | Spearman/Pearson 相关 | 简单直观，计算快速 |
+| **SparCC** | 稀疏相关性 | 校正组成性效应 |
+| **SPIEC-EASI** | 稀疏逆协方差 | 考虑条件独立性，去除间接效应 |
+| **WGCNA** | 加权相关网络 | 适合发现模块结构 |
+
+### 网络拓扑指标
+
+| 指标 | 含义 | 生态学解释 |
+|-----|------|-----------|
+| **度（Degree）** | 节点的连接数 | 连接度高的可能是关键物种 |
+| **介数中心性（Betweenness）** | 作为桥梁的频率 | 控制信息流动的关键节点 |
+| **模块内连接度（Zi）** | 在模块内的连接程度 | 模块核心或外围 |
+| **模块间连接度（Pi）** | 与其他模块的连接程度 | 网络连接器或模块特化者 |
+
+### 节点分类（基于 Zi 和 Pi）
+
+- **网络枢纽（Network hubs）**：Zi > 2.5, Pi > 0.62，在模块内外都高度连接
+- **模块枢纽（Module hubs）**：Zi > 2.5, Pi < 0.62，主要连接模块内部
+- **连接器（Connectors）**：Zi < 2.5, Pi > 0.62，连接不同模块
+- **外围节点（Peripherals）**：Zi < 2.5, Pi < 0.62，大部分节点属于此类
 
 ## 流程
 
-在 `microeco` 软件分析包中，网络分析主要是通过 `trans_network` 类来实现的。其分析方法可以概括为以下几个核心步骤：
+在 `microeco` 包中，网络分析通过 `trans_network` 类实现，主要流程如下：
 
+1. **初始化对象**：指定相关计算方法和过滤阈值
+2. **构建网络**：计算相关性并构建网络
+3. **模块划分**：使用聚类算法识别网络模块
+4. **拓扑分析**：计算网络属性和节点角色
+5. **可视化**：绘制网络图并导出到外部软件
 
 ```{r}
 #| echo: false
@@ -17,265 +53,351 @@
 knitr::include_graphics("https://vnote-1251564393.cos.ap-chengdu.myqcloud.com/picgo/20260131122057625.png")
 ```
 
-
-### 对象的初始化 (`trans_network$new`)
-
-首先，将标准化的 `microtable` 对象（包含物种丰度、元数据等）输入到 `trans_network` 类中。这是整个网络分析的起点，用于构建分析所需的原始数据结构。
-
-### 网络构建与计算 (`cal_network`)
-
-这是流程中的关键步骤（图中红色框）：
-
-* **计算相关性：** 支持多种算法（如 Spearman、Pearson、SparCC 等）来计算物种间的共发生关系。
-* **过滤：** 通过设置相关系数阈值（R值）和显著性水平（P值）来筛选具有统计学意义的边，最终生成网络计算结果。
-
-### 网络拓扑特征提取 (`res_network`)
-
-计算完成后，结果存储在 `res_network` 中，由此延伸出多种分析维度：
-
-* **拓扑属性分析：** 使用 `cal_network_attr` 计算全局属性（如密度、连通度）；`cal_powerlaw` 验证网络是否符合幂律分布；`cal_eigen` 计算特征向量。
-* **模块化分析：** 通过 `cal_module` 算法将复杂的网络划分为不同的功能模块。
-
-
-### 结果展示与进一步挖掘
-
-* **可视化：** * **R 绘图：** 使用 `plot_network` 直接在 R 环境中生成静态或交互式图形。
-* **外部工具：** 使用 `save_network` 将数据导出为 `.gexf` 等格式，以便在 **Gephi** 等专业网络软件中进行精美渲染。
-* **物种角色识别：** 通过 `get_node_table` 获取节点信息，进而使用 `plot_taxa_roles` 识别网络中的核心物种（如 Keystone taxa）。
-* **子网络提取：** 利用 `subset_network` 针对特定样本组或模块进行深入剖析。
-
-
+---
 
 {{< include microtable.qmd >}}
 
 
 ## 实现
 
+### 相关性网络构建
 
-### 相关性方法
-
-计算相关系数。
-
-```{r}
-#| label: correlation-init
-t1 = trans_network$new(dataset = mt, cor_method = "spearman", filter_thres = 0.001, tax_level = "Genus")
-```
-
-构建网络。
+使用 Spearman 相关性构建共现网络是最常用的方法。
 
 ```{r}
-#| label: correlation-calculate
-t1$cal_network(COR_p_thres = 0.01, COR_cut = 0.5, COR_optimization = TRUE)
+#| label: network-init
+#| message: false
+
+# 初始化 trans_network 对象
+t1 = trans_network$new(
+  dataset = mt,
+  cor_method = "spearman",
+  filter_thres = 0.001,
+  tax_level = "Genus"
+)
 ```
+
+**参数说明**：
+- `cor_method = "spearman"`：使用 Spearman 秩相关（对非正态分布稳健）
+- `filter_thres = 0.001`：过滤相对丰度 < 0.1% 的分类群
+- `tax_level = "Genus"`：在属水平构建网络
+
+### 计算网络
 
 ```{r}
-#| label: correlation-module-plot
-t1$cal_module()
-t1$plot_network(method = "ggraph", node_label = "Genus", node_color = "Genus")
+#| label: network-calculate
+
+# 构建网络，设置相关性阈值
+t1$cal_network(
+  COR_p_thres = 0.01,
+  COR_cut = 0.6,
+  COR_optimization = FALSE
+)
+
+# 查看网络基本信息
+t1$res_network
 ```
 
-计算网络属性。
+**参数说明**：
+- `COR_p_thres = 0.01`：P 值阈值，仅保留 P < 0.01 的相关性
+- `COR_cut = 0.6`：相关系数阈值，仅保留 |r| > 0.6 的边
+- `COR_optimization = TRUE` 可基于随机矩阵理论自动优化阈值
 
-```{r}
-#| label: network-attributes
-# calculate network attributes
-t1$cal_network_attr()
-```
+### 模块划分
 
-划分网络模块。
+使用社区检测算法将网络划分为功能模块。
 
 ```{r}
 #| label: network-module
+
+# 使用 fast greedy 算法划分模块
 t1$cal_module(method = "cluster_fast_greedy")
+
+# 查看模块划分结果
+table(t1$res_node_table$module)
 ```
 
-保存网络为 `*.gexf` 格式。
+### 网络可视化
+
+#### 在 R 中绘制网络图
+
+```{r}
+#| label: fig-network-plot
+#| fig-cap: "微生物共现网络图"
+#| fig-width: 10
+#| fig-height: 10
+
+# 使用 ggraph 方法绘制网络
+t1$plot_network(
+  method = "ggraph",
+  node_color = "module",
+  node_label = "Genus",
+  node_size_range = c(3, 10)
+)
+```
+
+**图形元素说明**：
+- 节点颜色：所属模块
+- 节点大小：连接度（Degree）
+- 边的颜色：正相关（通常）vs 负相关
+- 边的粗细：相关性强弱
+
+#### 导出到 Gephi
+
+对于 publication-quality 的图形，建议导出到 Gephi 进行美化。
 
 ```{r}
 #| label: save-network
-# require rgexf package to be installed
+#| eval: false
+
+# 保存为 GEXF 格式（需要 rgexf 包）
 t1$save_network(filepath = "network.gexf")
 ```
 
-获取节点、边和邻接矩阵（及其属性）。
+### 网络拓扑分析
+
+#### 计算网络属性
 
 ```{r}
-#| label: get-network-tables
-# get node properties
-t1$get_node_table(node_roles = TRUE)
+#| label: network-attr
 
-# get edge properties
-t1$get_edge_table()
-
-# return t1$res_edge_table 
-t1$get_adjacency_matrix()
+# 计算网络拓扑属性
+t1$cal_network_attr()
+t1$res_network_attr
 ```
 
-绘制节点分类，分别考虑模块内连通性和模块间连通性。
+**关键指标解读**：
+- **平均度（Average degree）**：每个节点的平均连接数
+- **聚类系数（Clustering coefficient）**：网络的聚集程度
+- **平均路径长度**：网络中任意两节点间的平均最短距离
+- **模块化指数（Modularity）**：模块划分的质量（>0.4 表示显著模块化）
 
+#### 节点角色分析
 
 ```{r}
-#| label: plot-taxa-roles
-# add_label = TRUE can be used to directly add text label for points
+#| label: node-roles
+
+# 获取节点属性表
+t1$get_node_table(node_roles = TRUE)
+head(t1$res_node_table)
+```
+
+#### 绘制节点角色图
+
+```{r}
+#| label: fig-taxa-roles
+#| fig-cap: "节点分类图（基于模块内和模块间连通性）"
+#| fig-width: 8
+#| fig-height: 6
+
+# 绘制节点角色分类图
 t1$plot_taxa_roles(use_type = 1)
 ```
 
-`subset_network()` 函数可以用于从网络中提取这些节点之间的一部分节点和边。
+**图形解读**：
+- X 轴（Pi）：模块间连通性，值越大表示与其他模块连接越多
+- Y 轴（Zi）：模块内连通性，值越大表示在模块内部越核心
+- 虚线将节点分为四类：网络枢纽、模块枢纽、连接器和外围节点
+
+#### 按分类学信息绘制
+
+```{r}
+#| label: fig-taxa-roles-phylum
+#| fig-cap: "节点分类图（按门水平着色）"
+#| fig-width: 8
+#| fig-height: 6
+
+t1$plot_taxa_roles(use_type = 2)
+```
+
+### 边和邻接矩阵
+
+```{r}
+#| label: edge-table
+
+# 获取边的属性
+t1$get_edge_table()
+head(t1$res_edge_table)
+
+# 获取邻接矩阵
+t1$get_adjacency_matrix()
+```
+
+### 子网络提取
+
+可以提取特定模块或节点的子网络进行进一步分析。
 
 ```{r}
 #| label: subset-network
-# extract a sub network that contains all nodes in module M1
-t1$subset_network(node = t1$res_node_table %>% base::subset(module == "M1") %>% rownames, rm_single = TRUE)
-# return a new network with igraph class
-# extract sub network in which all edge labels are "+", i.e. positive edges
-t1$subset_network(edge = "+")
+
+# 提取模块 M1 的子网络
+sub_network <- t1$subset_network(
+  node = t1$res_node_table %>%
+    base::subset(module == "M1") %>%
+    rownames,
+  rm_single = TRUE
+)
+
+# 查看子网络
+sub_network
 ```
 
-函数 `cal_sum_links()` 可以计算从一个分类到另一个分类或同一分类内的链接（边）数量。函数 `plot_sum_links()` 用于展示函数 `cal_sum_links()` 的结果。这对于快速查看不同分类之间或同一分类内有多少节点相连接非常有用。
+### 分类群间连接分析
 
-
-### 其它方法
+计算不同分类群之间的连接数量。
 
 ```{r}
-#| label: bray-curtis-network
-# use Bray–Curtis index (1-dissimilarity)
-t1 <- trans_network$new(dataset = mt, cor_method = "bray", filter_thres = 0.001)
+#| label: sum-links
+#| eval: false
+
+# 计算门水平间的连接数
+t1$cal_sum_links(taxa_level = "Phylum")
+
+# 绘制弦图（需要 chorddiag 包）
+t1$plot_sum_links(
+  plot_pos = TRUE,
+  plot_num = 10,
+  color_values = RColorBrewer::brewer.pal(10, "Paired")
+)
+```
+
+### 其他网络构建方法
+
+#### Bray-Curtis 网络
+
+```{r}
+#| label: bray-network
+#| eval: false
+
+t1 <- trans_network$new(
+  dataset = mt,
+  cor_method = "bray",
+  filter_thres = 0.001
+)
 t1$cal_network(network_method = "COR")
 t1$cal_module()
-t1$plot_network(node_color = "Genus", node_label = "Genus")
+t1$plot_network(node_color = "Phylum", node_label = "Genus")
 ```
 
-```{r}
-#| label: pearson-network
-# Pearson correlation
-t1 <- trans_network$new(dataset = mt, cor_method = "pearson", filter_thres = 0.001)
-t1$cal_network()
-t1$cal_module()
-t1$plot_network()
-```
-
-### WGCNA 方法
-
-**WGCNA** (Weighted Gene Co-expression Network Analysis) 是一种用于描述不同样本间基因关联模式的系统生物学方法，通过构建**加权基因共表达网络**，将成千上万个基因按照表达模式聚类成若干个模块（Modules），并进一步分析模块与临床表型（如疾病状态、环境因子）之间的相关性，从而识别出在生物学过程中起关键调控作用的核心基因（Hub genes）。
+#### WGCNA 方法
 
 ```{r}
-#| label: wgcna-pearson
+#| label: wgcna-network
+#| eval: false
+
 library(WGCNA)
 
-# Pearson correlation using WGCNA package
-t1 <- trans_network$new(dataset = mt, cor_method = "pearson", use_WGCNA_pearson_spearman = TRUE, filter_thres = 0.001)
+t1 <- trans_network$new(
+  dataset = mt,
+  cor_method = "spearman",
+  use_WGCNA_pearson_spearman = TRUE,
+  filter_thres = 0.001
+)
 t1$cal_network()
 t1$cal_module()
 t1$plot_network()
 ```
 
+## 结果
 
-```{r}
-#| label: wgcna-spearman
-# Spearman correlation using WGCNA package
-t1 <- trans_network$new(dataset = mt, cor_method = "spearman", use_WGCNA_pearson_spearman = TRUE, filter_thres = 0.001)
-t1$cal_network()
-t1$cal_module()
-t1$plot_network()
-```
+### 网络整体特征
 
+基于网络拓扑属性的分析结果：
 
-### NetCoMi 方法
+**网络规模**：
+- 节点数：网络中包含的分类群数量
+- 边数：显著相关的类群对数
+- 连接密度：边数与理论最大边数的比值
 
-**NetCoMi** (Network Comparison of Microbiome data) 是一个专门用于微生物组数据**网络构建、比较和差异分析**的 R 包，它集成了从数据处理、多种关联计算算法（如 SparCC, SPIEC-EASI）到网络拓扑属性评估的完整流程，其核心特色在于能通过统计学检验（如置换检验）对比不同组别间网络结构的显著性差异，帮助研究者揭示微生物关联模式在不同环境或处理下的动态变化。
+**网络结构**：
+- **模块化程度**：高模块化指数（>0.4）表明网络具有显著的模块结构，暗示存在功能分化的微生物群组
+- **小世界特性**：高聚类系数和短平均路径长度表明网络具有小世界特性，信息传播效率高
+- **度分布**：符合幂律分布（无标度网络）表明存在少数高度连接的枢纽节点
 
-- `filter_thres`：相对丰度阈值。
-- `COR_p_thru`：P 值阈值。
-- `COR_cut`：相关系数阈值。
+### 关键节点识别
 
-```{r}
-#| label: netcomi-pearson
-library("NetCoMi")
-# Pearson correlation using NetCoMi package; install it from https://github.com/stefpeschel/NetCoMi
-t1 <- trans_network$new(dataset = mt, cor_method = "pearson", use_NetCoMi_pearson_spearman = TRUE, filter_thres = 0.001)
-t1$cal_network(COR_p_thru = 0.05, COR_cut = 0.1)
-t1$cal_module()
-t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
-```
+基于节点角色分析的结果：
 
-```{r}
-#| label: netcomi-spearman
-# Spearman correlation using NetCoMi package
-t1 <- trans_network$new(dataset = mt, cor_method = "spearman", use_NetCoMi_pearson_spearman = TRUE, filter_thres = 0.001)
-t1$cal_network(COR_p_thru = 0.05, COR_cut = 0.1)
-t1$cal_module()
-t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
-```
+**模块枢纽（Module hubs）**：
+- 在各自模块内部高度连接
+- 可能是模块内的核心功能执行者
+- 对模块的稳定性具有重要影响
 
+**连接器（Connectors）**：
+- 连接不同模块的桥梁节点
+- 促进模块间的物质和信息交换
+- 对维持网络整体连通性至关重要
 
-```{r}
-#| label: netcomi-sparcc
-# SparCC method, from NetCoMi package; https://github.com/stefpeschel/NetCoMi
-t1 <- trans_network$new(dataset = mt, cor_method = "sparcc", use_sparcc_method = "NetCoMi", filter_thres = 0.001)
-t1$cal_network(COR_p_thru = 0.05, COR_cut = 0.1)
-t1$cal_module()
-t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
-```
+**网络枢纽（Network hubs）**（如果存在）：
+- 在模块内外都高度连接
+- 可能是群落中的关键物种（Keystone species）
+- 其丧失可能对群落功能产生重大影响
 
-```{r}
-#| label: netcomi-cclasso
-# CCLasso method based on NetCoMi package
-t1 <- trans_network$new(dataset = mt, cor_method = "cclasso", filter_thres = 0.001)
-t1$cal_network(COR_p_thru = 0.05, COR_cut = 0.001)
-t1$cal_module()
-t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
-```
+### 模块的功能推断
 
+**模块的生态学意义**：
 
-```{r}
-#| label: netcomi-ccrepe
-library(ccrepe)
+1. **功能特化**：
+   - 同一模块内的分类群可能具有相似的功能特征或生态位偏好
+   - 不同模块可能执行不同的生态系统功能
 
-# CCREPE method based on NetCoMi package
-t1 <- trans_network$new(dataset = mt, cor_method = "ccrepe", filter_thres = 0.001, taxa_level = "Genus")
-t1$cal_network(COR_cut = 0.2)
-t1$cal_module()
-t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
-```
+2. **环境响应**：
+   - 比较不同处理组的网络模块组成，可以识别对处理敏感的微生物群组
+   - 模块丰度或结构的变化可能反映功能群落的重组
 
-### SPIEC-EASI 方法
+3. **稳定性分析**：
+   - 模块内部的高连接度可能增强群落的稳定性
+   - 模块间的连接可能影响群落的恢复力和适应性
 
-SPIEC-EASI（用于生态关联推断的稀疏逆协方差估计）是 SpiecEasi R 包的一种方法，基于图模型提供了两种网络构建方法，这些方法依赖于稀疏邻域和逆协方差选择的算法。有关包的安装，请参见 https://github.com/zdk123/SpiecEasi。根据我们的测试经验，当样本数量很大（例如数百到数千）时，`SpiecEasi_method = 'glasso'` 的计算速度非常慢。
+### 网络与处理效应的关系
 
-```{r}
-#| label: spieceasi-mb
-library(SpiecEasi)
-t1 = trans_network$new(dataset = mt, cor_method = NULL, taxa_level = "OTU", filter_thres = 0.001)
-t1$cal_network(network_method = "SpiecEasi", SpiecEasi_method = "mb")
-t1$cal_module()
-t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
-```
+**可能的发现模式**：
 
-```{r}
-#| label: spieceasi-sparcc
-# SparCC method, from SpiecEasi package, see https://github.com/zdk123/SpiecEasi for the installation
-t1 = trans_network$new(dataset = mt, cor_method = "sparcc", use_sparcc_method = "SpiecEasi", filter_thres = 0.001, taxa_level = "Genus")
-t1$cal_network(COR_cut = 0.2)
-t1$cal_module()
-t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
-```
+1. **网络复杂度的变化**：
+   - 若某处理组的网络边数减少，可能表明处理简化了群落结构
+   - 若连接度增加，可能表明处理促进了微生物间的相互作用
 
-### beemStatic 方法
+2. **模块重组**：
+   - 处理可能导致分类群在网络中重新组织，形成新的模块结构
+   - 某些模块可能在特定处理中消失或新出现
 
-我们要展示的最后一种方法来自 `beemStatic` 包（Li et al. 2021）。该方法可以应用于横截面数据集，以基于广义洛特卡-沃尔泰拉模型推断交互网络，该模型通常用于微生物时间序列数据。因此，这种方法得到的网络是有向网络。请访问 https://github.com/CSB5/BEEM-static 以安装 R `beemStatic` 包。
+3. **关键节点的变化**：
+   - 不同处理组可能具有不同的网络枢纽
+   - 关键物种的转换可能反映群落功能状态的变化
 
+### 与其他分析的关联
 
-```{r}
-#| label: beemstatic-network
-library(beemStatic)
+**与差异分析的联系**：
+- 在网络中处于核心位置（高连接度）的分类群，如果在差异分析中也显著富集，则更可能是关键功能类群
+- 连接器节点即使丰度不高，也可能通过影响模块间交流而发挥重要作用
 
-t1 = trans_network$new(dataset = mt, cor_method = NULL, taxa_level = "OTU", filter_thres = 0.001)
+**与 Beta 多样性的联系**：
+- 网络拓扑的差异可以解释 Beta 多样性观察到的模式
+- 组间网络结构的差异可能比单纯的组成差异更能反映功能变化
 
-# require beemStatic package installed
-t1$cal_network(network_method = "beemStatic")
+### 研究局限性与注意事项
 
-# use cluster_walktrap method for the directed network
-t1$cal_module(method = "cluster_walktrap")
+1. **相关性不等于因果**：
+   - 网络中的边仅表示统计关联，不代表直接的生物学相互作用
+   - 相关可能是由共同的环境偏好或间接效应引起的
 
-t1$plot_network(method = "ggraph", node_color = "Genus", node_label = "Genus")
-```
+2. **组成性效应**：
+   - 基于相对丰度的相关性分析存在组成性效应
+   - 建议使用 SparCC 或 SPIEC-EASI 等方法进行验证
+
+3. **阈值依赖性**：
+   - 网络结构对相关性和 P 值阈值敏感
+   - 建议使用不同阈值进行敏感性分析
+
+4. **时间动态**：
+   - 横截面数据构建的网络无法反映相互作用的动态变化
+   - 时间序列分析可以提供更丰富的信息
+
+## 💡 小提示
+
+**microeco** 包的使用文档参见：<https://chiliubio.github.io/microeco_tutorial>。
+
+- 网络构建前建议先过滤低丰度分类群（`filter_thres`），以减少噪声和计算量
+- `COR_optimization = TRUE` 可基于随机矩阵理论自动寻找最佳相关性阈值
+- 使用 Gephi 软件可以获得更美观的网络可视化效果
+- 节点角色分类基于 Guimerà & Amaral (2005) 的方法，广泛应用于生态网络研究

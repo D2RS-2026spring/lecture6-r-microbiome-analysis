@@ -2,17 +2,51 @@
 
 ## 概述
 
+差异丰度分析（Differential Abundance Analysis）旨在识别在不同实验条件或处理组之间丰度显著变化的微生物类群，即"生物标志物"（Biomarkers）。这是微生物组研究中最关键的步骤之一，直接关联到实验处理的生物学效应。
 
+### 差异分析的科学目标
+
+- **识别响应类群**：发现对处理条件敏感的关键微生物
+- **解析功能变化**：结合分类群的功能特征，推断处理对生态系统功能的影响
+- **开发生物标志物**：为环境监测、疾病诊断等应用提供指示物种
+- **验证科学假设**：统计验证在物种组成分析中观察到的趋势
+
+### 常用差异分析方法
+
+由于微生物组数据的特殊性（稀疏性、组成性、过度离散），多种统计方法被开发用于差异分析：
+
+| 方法 | 特点 | 适用场景 |
+|-----|------|---------|
+| **LEfSe** | 结合统计检验和 LDA 分数 | 经典方法，适合多组比较 |
+| **ANCOM-BC2** | 校正组成性偏倚 | 高灵敏度，推荐首选 |
+| **DESeq2** | 基于负二项分布 | 适合大样本量 |
+| **MetagenomeSeq** | 零膨胀对数正态模型 | 适合稀疏数据 |
+| **Wilcoxon/KW** | 非参数检验 | 简单稳健，不考虑组成性 |
+
+### 方法选择建议
+
+1. **LEfSe**：作为经典方法，适合初步探索和可视化
+2. **ANCOM-BC2**：当前推荐的首选方法，对组成性效应校正较好
+3. **多种方法比较**：不同方法可能产生不同结果，建议运行多种方法取交集
 
 ## 流程
 
+在 `microeco` 包中，差异分析通过 `trans_diff` 类实现，主要流程如下：
 
-差异丰度测试是微生物组分析中的一个重要部分。它可以找到在不同组之间确定群落差异的显著分类群。由于基础模型/假设的不同，不同的方法可能会产生不一致的结果。目前，`trans_diff` 类包含多种著名的差异测试方法或封装方法，以更好地捕捉重要的生物标志物。
+1. **创建分析对象**：指定方法和参数
+2. **运行分析**：自动执行统计检验
+3. **结果可视化**：绘制条形图、误差线图、系统发育树图等
+4. **结果解读**：结合生物学知识解释显著差异的分类群
+
+**注意事项**：
+- 分类表必须经过 `tidy_taxonomy()` 处理，确保格式统一
+- 不同方法对数据的假设不同，需根据数据特点选择
+- 多重检验校正（FDR/Benjamini-Hochberg）是必需的
 
 ```{r}
 #| echo: false
 #| label: fig-trans-diff-methods
-#| fig-cap: "使用 microeco 进行差异分析的方法"
+#| fig-cap: "使用 microeco 进行差异分析的方法概览"
 knitr::include_graphics("https://vnote-1251564393.cos.ap-chengdu.myqcloud.com/picgo/20260130142541503.png")
 ```
 
@@ -24,69 +58,233 @@ knitr::include_graphics("https://vnote-1251564393.cos.ap-chengdu.myqcloud.com/pi
 
 ## 实现
 
+### LEfSe 方法
 
-
-### LEFSe 方法
-
-使用 LEFSe 方法分析不同 `genetic_group` 之间的群落差异。
+LEfSe（Linear Discriminant Analysis Effect Size）是一种经典的差异分析方法，结合非参数检验和线性判别分析。
 
 ```{r}
-t1 = trans_diff$new(dataset = mt, method = "lefse", alpha = 0.05, group = "treatment", p_adjust_method = "none")
+#| label: lefse-analysis
 
-t1$res_diff
+# 使用 LEfSe 方法进行差异分析
+t1 = trans_diff$new(
+  dataset = mt,
+  method = "lefse",
+  alpha = 0.05,
+  group = "treatment",
+  p_adjust_method = "none"
+)
+
+# 查看差异分析结果
+head(t1$res_diff)
 ```
 
-差异分类群。
+**参数说明**：
+- `method = "lefse"`：指定使用 LEfSe 方法
+- `alpha = 0.05`：显著性水平阈值
+- `p_adjust_method = "none"`：不进行 p 值校正（LEfSe 内部有自己的过滤机制）
+
+#### LEfSe 结果条形图
 
 ```{r}
-# we show 20 taxa with the highest LDA (log10)
+#| label: fig-lefse-bar
+#| fig-cap: "LEfSe 差异分析条形图（LDA 分数）"
+#| fig-width: 10
+#| fig-height: 8
+
+# 显示 LDA > 2 的分类群条形图
 t1$plot_diff_bar(use_number = 1:20)
 ```
 
-误差线图。
+**图形解读**：
+- 条形长度表示 LDA 分数（对数尺度），分数越大表示差异越显著
+- 颜色表示该分类群富集的组别
+- 通常 LDA > 2 被认为是显著的生物标志物
+
+#### 差异分类群丰度图
 
 ```{r}
+#| label: fig-lefse-abund
+#| fig-cap: "差异分类群的相对丰度"
+#| fig-width: 10
+#| fig-height: 8
+
 t1$plot_diff_abund(plot_type = "errorbar")
 ```
 
-使用支系图显示差异物种。
+#### 系统发育树图（Cladogram）
 
 ```{r}
-# t1$plot_diff_cladogram(use_taxa_num = 200, use_feature_num = 50, clade_label_level = 5)
+#| label: fig-lefse-cladogram
+#| fig-cap: "差异分类群的系统发育树图"
+#| fig-width: 12
+#| fig-height: 10
+
+# 绘制系统发育树图（需要 ggtree 包）
+# 注意：若分类表格式不统一可能导致错误，请确保已运行 tidy_taxonomy()
+t1$plot_diff_cladogram(
+  use_taxa_num = 200,
+  use_feature_num = 50,
+  clade_label_level = 5
+)
 ```
 
+**图形解读**：
+- 树的分支表示分类学层级
+- 节点颜色表示该分支富集的组别
+- 字母标记对应图例中的具体分类群
 
 ### 随机森林方法
 
-```{r}
-library(randomForest)
-# use Genus level for parameter taxa_level, if you want to use all taxa, change to "all"
-# nresam = 1 and boots = 1 represent no bootstrapping and use all samples directly
-t1 = trans_diff$new(dataset = mt, method = "rf", taxa_level = "Genus")
+随机森林（Random Forest）是一种机器学习方法，可用于识别重要的分类特征。
 
+```{r}
+#| label: rf-analysis
+#| message: false
+
+library(randomForest)
+
+# 使用随机森林方法（属水平）
+t1 = trans_diff$new(
+  dataset = mt,
+  method = "rf",
+  taxa_level = "Genus",
+  nresam = 1,
+  boots = 1
+)
+
+# 条形图展示重要性分数
 t1$plot_diff_bar(use_number = 1:20)
 ```
 
+**MeanDecreaseGini**：
+- 表示该分类群对分类模型的贡献度
+- 值越大表示该分类群的区分能力越强
+
+### ANCOM-BC2 方法
+
+ANCOM-BC2 是当前推荐的差异分析方法，通过估计和校正样本特异性偏倚，有效解决了组成性问题。
+
 ```{r}
-t1$plot_diff_abund(plot_type = "errorbar")
+#| label: ancombc2-analysis
+#| message: false
+
+# 使用 ANCOM-BC2 方法
+t1 = trans_diff$new(
+  dataset = mt,
+  method = "ancombc2",
+  taxa_level = "Genus",
+  filter_thres = 0.01
+)
+
+# 热图展示结果
+t1$plot_diff_bar(
+  heatmap_cell = "P.adj",
+  heatmap_sig = "Significance",
+  heatmap_x = "Factors",
+  heatmap_y = "Taxa"
+)
 ```
 
-### ANCOMBC2 方法
+**ANCOM-BC2 的优势**：
+- 校正组成性效应
+- 控制假阳性率
+- 支持多组比较和协变量调整
 
-ANCOM-BC2 是一种专为微生物组数据设计的统计方法，它通过估计并校正样本特异性的抽样偏倚，解决了测序数据因总读长限制导致的**组成性（Compositionality）**问题，从而能更准确地推断物种绝对丰度的差异，并在兼顾高灵敏度的同时有效控制假阳性。
+### 其他方法示例
+
+#### Wilcoxon 秩和检验
 
 ```{r}
-t1 = trans_diff$new(dataset = mt, method = "ancombc2", taxa_level = "OTU", filter_thres = 0.01)
+#| label: wilcox-analysis
 
-t1$plot_diff_bar(heatmap_cell = "P.adj", heatmap_sig = "Significance", heatmap_x = "Factors", heatmap_y = "Taxa")
+t1 = trans_diff$new(
+  dataset = mt,
+  method = "wilcox",
+  group = "treatment",
+  taxa_level = "Genus",
+  filter_thres = 0.001
+)
+
+# 筛选显著的结果
+t1$res_diff %<>% subset(Significance %in% c("*", "**", "***"))
+t1$plot_diff_abund(add_sig = TRUE)
 ```
 
+#### 多组比较（Kruskal-Wallis）
 
 ```{r}
-t2 = trans_diff$new(dataset = mt, method = "lefse", group = "treatment")
+#| label: kw-analysis
 
-t2$res_diff
-t2$plot_diff_abund(plot_type = "errorbar")
+t1 = trans_diff$new(
+  dataset = mt,
+  method = "KW",
+  group = "treatment",
+  taxa_level = "Phylum"
+)
+
+t1$plot_diff_abund(use_number = 1:20)
 ```
 
 ## 结果解读
+
+### 差异生物标志物的识别
+
+基于 LEfSe 和 ANCOM-BC2 的分析结果，我们可以识别出在各处理组中显著富集的分类群。
+
+**结果解读步骤**：
+
+1. **筛选显著分类群**：
+   - LEfSe：LDA > 2 且 P < 0.05
+   - ANCOM-BC2：P.adj < 0.05
+
+2. **分类学注释**：
+   - 查阅文献了解这些分类群的生态功能
+   - 结合实验处理条件推断其富集的生物学意义
+
+3. **跨方法验证**：
+   - 比较不同方法识别的生物标志物
+   - 重点关注多个方法一致发现的分类群
+
+### 可能的生物学发现
+
+**基于土壤微生物组的典型发现模式**：
+
+1. **养分循环相关类群**：
+   - 若 ZY0.5 或 ZY1 组富集了更多参与氮循环的类群（如某些 Proteobacteria），可能表明施肥促进了功能微生物的生长
+
+2. **胁迫耐受类群**：
+   - 若高剂量处理组富集了特定耐受类群，可能表明处理产生了一定的选择压力
+
+3. **共生/互利类群**：
+   - 某些植物促生菌（PGPR）的富集可能解释了处理对植物生长的促进作用
+
+### 结果总结表格
+
+建议将主要发现整理为如下格式的表格：
+
+| 分类群 | 富集组 | LDA 分数 | P 值 | 已知功能 |
+|-------|-------|---------|------|---------|
+| Genus A | ZY0 | 3.5 | 0.01 | 有机物分解 |
+| Genus B | ZY1 | 4.2 | 0.005 | 固氮作用 |
+
+### 研究局限性与建议
+
+1. **关联非因果**：差异分析揭示的是关联关系，不能直接推断因果关系
+
+2. **功能验证**：基于分类学的功能推断是间接的，建议通过以下方式验证：
+   - PICRUSt2 等功能预测分析
+   - 宏基因组测序
+   - 分离培养和功能实验
+
+3. **生态学解释**：结合环境因素（如 pH、养分含量）解释观察到的差异模式
+
+4. **多重检验**：当检验大量分类群时，假阳性风险增加，应使用校正后的 P 值
+
+## 💡 小提示
+
+**microeco** 包的使用文档参见：<https://chiliubio.github.io/microeco_tutorial>。
+
+- 运行 `tidy_taxonomy()` 是差异分析前的必要步骤，否则可能导致 cladogram 绘图失败
+- `filter_thres` 参数用于预先过滤低丰度分类群，减少多重检验负担
+- 使用多种差异分析方法并取交集，可以提高结果的可靠性
+- `plot_diff_abund()` 中的 `add_sig = TRUE` 可以添加显著性标记

@@ -1,67 +1,256 @@
 # α 多样性 {#sec-alpha-diversity}
 
+## 概述
+
+Alpha 多样性（α diversity）用于描述单个样本内微生物群落的物种丰富度和均匀度，是微生物组分析中最基本的指标之一。理解 Alpha 多样性有助于评估：
+
+- **群落复杂度**：样本中包含多少种微生物？分布是否均匀？
+- **生态位容纳能力**：环境能支持多少物种共存？
+- **干扰响应**：环境变化如何影响群落内部的多样性？
+
+### 常用 Alpha 多样性指标
+
+| 指标 | 含义 | 计算方式 | 敏感性 |
+|-----|------|---------|--------|
+| **Observed** | 观测到的 ASV/OTU 数量 | 直接计数 | 受测序深度影响 |
+| **Chao1** | 估计物种总数 | 基于稀有物种推算 | 偏向稀有物种 |
+| **Shannon** | 综合丰富度和均匀度 | $H' = -\sum p_i \ln(p_i)$ | 中等敏感 |
+| **Simpson** | 优势度指数 | $\lambda = \sum p_i^2$ | 偏向优势种 |
+| **Pielou** | 均匀度指数 | $J' = H' / \ln(S)$ | 纯均匀度度量 |
+
+其中，$p_i$ 是第 $i$ 个物种的相对丰度，$S$ 是物种总数。
+
+### 分析目标
+
+本分析旨在：
+
+1. 评估不同处理组样本的 Alpha 多样性水平
+2. 比较处理组间 Alpha 多样性的差异是否显著
+3. 探讨环境因素与 Alpha 多样性的关系
+
+## 流程
+
+在 `microeco` 包中，Alpha 多样性分析的工作流程如下：
+
+1. **数据标准化（抽平）**：使用 `rarefy_samples()` 将各样本抽平到相同序列数，消除测序深度差异的影响
+2. **计算多样性指标**：使用 `cal_alphadiv()` 计算各类 Alpha 多样性指数
+3. **差异检验**：使用 `trans_alpha` 类进行组间差异统计检验
+4. **可视化**：绘制箱线图或小提琴图展示结果
+
+**关键注意事项**：
+- 抽平深度应根据样本的最低测序量确定，通常保留 80% 以上样本可达深度
+- 多样性差异检验方法选择取决于数据分布（正态/非正态）和组数（两组/多组）
+
+## 实现
+
 
 {{< include microtable.qmd >}}
 
-## α 多样性分析
-
-在 `microeco` 包中，处理 `microtable` 对象（通常简写为 `mt`）的流程非常模块化。针对你的需求，我们需要用到 `rarefy_samples` 方法进行抽平，以及 `trans_alpha` 类进行计算和绘图。
 
 ### 抽平 (Rarefaction)
 
-为了保证 Alpha 多样性的公平比较，通常先将样本抽平到相同的测序深度。
+为了保证 Alpha 多样性的公平比较，首先将样本抽平到相同的测序深度。抽平是一种数据标准化方法，通过随机抽取相同数量的序列，消除因测序深度不同造成的偏差。
 
 ```{r}
-# 建议先检查一下各样本的序列量，确定抽平深度
-mt$sample_sums() |> summary()
+#| label: check-sequencing-depth
+#| fig-cap: "各样本测序深度分布"
+
+# 检查各样本的原始测序量
+depth_summary <- mt$sample_sums() |> summary()
+depth_summary
 ```
 
-新建一个对象保存抽平后的结果。
+根据测序深度的分布，选择合适的抽平深度。通常选择样本最低测序量或覆盖大多数样本的深度。
 
 ```{r}
+#| label: rarefaction
+
+# 克隆原始数据，保留原始对象
 mt_rarafied = clone(mt)
-mt_rarafied$rarefy_samples(sample.size = max(min(mt$sample_sums(), 20000)))
+
+# 确定抽平深度（使用最小样本深度或设定阈值）
+rarefy_depth <- min(mt$sample_sums())
+cat("抽平深度:", rarefy_depth, "\n")
+
+# 执行抽平
+mt_rarafied$rarefy_samples(sample.size = rarefy_depth)
 mt_rarafied$tidy_dataset()
 ```
 
-检查抽平后的结果。
+验证抽平后的结果：
 
 ```{r}
+#| label: check-rarefied-depth
+
+# 确认所有样本现在具有相同的序列数
 mt_rarafied$sample_sums() |> summary()
 ```
 
 ### 计算 Alpha 多样性指标
 
-抽平后，使用 `cal_alphadiv()` 函数计算常用的指标（如 Shannon, Chao1, Observed 等）。
+抽平后，使用 `cal_alphadiv()` 函数计算常用的 Alpha 多样性指标。
 
 ```{r}
+#| label: calculate-alpha
+
+# 计算多样性指标
 measures = c("Observed", "Chao1", "Shannon", "Simpson")
-mt_rarafied$cal_alphadiv(measures = measures) # NULL 表示计算所有默认指标
+mt_rarafied$cal_alphadiv(measures = measures)
+
+# 查看结果
+head(mt_rarafied$alpha_diversity)
 ```
 
-### 创建分析对象
+**指标解释**：
+- **Observed**：实际检测到的 ASV 数量，直接反映物种丰富度
+- **Chao1**：基于稀有物种估计的总物种数，适合评估未观测到的物种
+- **Shannon**：综合考虑丰富度和均匀度，值越大表示多样性越高
+- **Simpson**：反映随机选取两个个体属于同一物种的概率，值越小表示多样性越高
 
-使用 `trans_alpha` 类来关联数据和分组信息（`treatment`）。
+### 创建分析对象并进行差异检验
+
+使用 `trans_alpha` 类来关联 Alpha 多样性数据和样本分组信息，进行统计检验。
 
 ```{r}
+#| label: alpha-diff-test
+
+# 创建 trans_alpha 对象
 t1 = trans_alpha$new(dataset = mt_rarafied, group = "treatment")
+
+# 使用 Kruskal-Wallis 检验（非参数检验，适合多组比较）
 t1$cal_diff(method = "KW_dunn", KW_dunn_letter = TRUE)
+
+# 查看差异检验结果
+t1$res_diff
 ```
 
-### 画图
+**方法选择说明**：
+- **KW_dunn**：Kruskal-Wallis 检验结合 Dunn's 事后检验，适用于非正态分布数据的多组比较
+- **anova**：方差分析，适用于正态分布数据
+- **wilcox**：Wilcoxon 秩和检验，适用于两组比较
 
-使用 `plot_alpha()` 方法来绘制图片。
+### 可视化
+
+#### 多指标综合展示
 
 ```{r}
+#| label: fig-alpha-multi
+#| fig-cap: "不同处理组的 Alpha 多样性比较"
+#| fig-width: 12
+#| fig-height: 8
+
+# 绘制所有指标的箱线图
 plots = lapply(measures, function(x){
- t1$plot_alpha(measure = x, add = "jitter")
+  t1$plot_alpha(measure = x, add = "jitter") +
+    ggtitle(x) +
+    theme(legend.position = "none")
 })
 
-wrap_plots(plots)
+wrap_plots(plots, ncol = 2)
 ```
 
+#### 单指标详细展示
 
+以 Shannon 多样性为例，展示更详细的可视化：
+
+```{r}
+#| label: fig-alpha-shannon
+#| fig-cap: "Shannon 多样性指数的比较"
+#| fig-width: 8
+#| fig-height: 6
+
+t1$plot_alpha(measure = "Shannon", add = "jitter", y_increase = 0.1)
+```
+
+## 结果
+
+### Alpha 多样性总体特征
+
+从 @fig-alpha-multi 可以看出各处理组的 Alpha 多样性特征：
+
+1. **物种丰富度（Observed 和 Chao1）**：
+   - 反映样本中实际存在或估计的物种数量
+   - 组间的差异模式可以反映处理条件对群落丰富度的影响
+
+2. **综合多样性（Shannon）**：
+   - 同时考虑物种数量和分布均匀度
+   - 是生态学中最常用的多样性指标
+
+3. **优势度（Simpson）**：
+   - 反映群落是否被少数优势种主导
+   - 值越接近 0，表示多样性越高
+
+### 组间差异分析
+
+基于统计检验结果（`t1$res_diff`）：
+
+**显著性解读**：
+- 若检验结果显示组间差异显著（P < 0.05），说明处理条件对微生物多样性产生了可检测的影响
+- 事后检验的字母标记（如 a、b、ab）指示具体哪些组之间存在显著差异：不同字母表示显著差异，相同字母表示无显著差异
+
+**可能的生物学解释**：
+
+1. **如果 ZY0.5 组的 Shannon 多样性显著高于其他组**：
+   - 可能表明中等强度的处理（如中等施肥量）创造了更适宜多种微生物共存的环境
+   - 符合生态学中的"中度干扰假说"
+
+2. **如果处理组间无显著差异**：
+   - 说明当前处理强度可能不足以改变土壤微生物的整体多样性
+   - 或者土壤微生物组对处理有较强的抵抗力/恢复力
+
+3. **如果某一处理组的丰富度显著降低**：
+   - 可能表明该处理条件对某些微生物类群产生了抑制效应
+   - 需要结合物种组成分析进一步探究受影响的类群
+
+### 与环境因子的关系（可选拓展）
+
+可以进一步探索 Alpha 多样性与环境因子的关系：
+
+```{r}
+#| label: fig-alpha-env
+#| fig-cap: "Alpha 多样性与环境因子的关系"
+#| fig-width: 10
+#| fig-height: 6
+
+# 合并多样性数据与环境数据
+alpha_env <- mt_rarafied$alpha_diversity |>
+  as.data.frame() |>
+  rownames_to_column("sample_id") |>
+  left_join(
+    mt_rarafied$sample_table |> rownames_to_column("sample_id"),
+    by = "sample_id"
+  )
+
+# 绘制 Shannon 与 pH 的关系
+ggplot(alpha_env, aes(x = pH, y = Shannon, color = treatment)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = TRUE, aes(group = 1), color = "black") +
+  theme_bw() +
+  labs(x = "pH", y = "Shannon Diversity")
+```
+
+### 结论与建议
+
+基于 Alpha 多样性分析，我们可以得出以下结论：
+
+1. **处理效应评估**：不同处理条件对土壤微生物 Alpha 多样性的影响程度（显著/不显著）
+
+2. **最佳处理条件识别**：如果存在显著差异，可以识别出维持或提高微生物多样性的最佳处理条件
+
+3. **后续分析建议**：
+   - 若 Alpha 多样性存在显著差异，建议进一步分析哪些类群对多样性变化贡献最大
+   - 若 Alpha 多样性无显著差异，但物种组成可能有变化，建议关注 Beta 多样性分析
+
+**分析局限性说明**：
+- Alpha 多样性仅反映样本内的多样性特征，无法说明样本间的相似性差异
+- 抽平过程会舍弃部分数据，对于低深度样本可能造成信息损失
+- 相对丰度数据可能存在组成性效应，解释时需谨慎
 
 ## 💡 小提示
 
 **microeco** 包的使用文档参见：<https://chiliubio.github.io/microeco_tutorial>。
+
+- 抽平前务必检查各样本的测序深度分布，避免过度抽平导致数据损失
+- `cal_diff()` 函数支持多种统计方法，根据数据特点选择合适的方法
+- 使用 `add = "jitter"` 参数可以在箱线图上叠加散点，更清楚地展示数据分布
+- 字母标记法中，相同字母表示无显著差异，不同字母表示存在显著差异

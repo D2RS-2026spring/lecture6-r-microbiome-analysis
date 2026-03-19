@@ -1,5 +1,86 @@
-# Introduction
+# 课程介绍
 
-This is a book created from markdown and executable code.
+本课程是《数据驱动的可重复性研究》系列讲座的第六讲，专注于微生物组（Microbiome）数据分析的原理与实践。微生物组研究是当代生命科学中最活跃的研究领域之一，涉及生态学、医学、农业和环境科学等多个学科。
 
-See @knuth84 for additional discussion of literate programming.
+## 什么是微生物组？
+
+微生物组是指特定环境中所有微生物及其遗传物质的总和，包括：
+
+- **细菌**（Bacteria）：数量最多、功能最多样的微生物类群
+- **古菌**（Archaea）：在极端环境和特定生态过程中发挥重要作用
+- **真菌**（Fungi）：参与有机物分解和养分循环
+- **病毒**（Viruses）：调控微生物群落结构和进化
+
+微生物组与宿主健康、生态系统功能和环境变化密切相关。通过高通量测序技术分析微生物组，我们可以：
+
+- 诊断疾病和评估健康状态
+- 优化农业生产和管理土壤健康
+- 监测环境变化和评估生态质量
+- 开发新型生物技术和药物
+
+## 16S rRNA 基因测序
+
+16S rRNA 基因是细菌和古菌中存在的保守基因，具有以下特点：
+
+- **保守区域**：可用于设计通用引物进行 PCR 扩增
+- **可变区域**：可用于区分不同物种
+- **适当长度**：约 1,500 bp，便于测序和比对
+
+本课程使用的示例数据基于 16S rRNA 基因 V4 区测序，使用 Illumina MiSeq 平台进行双端测序（2×250 bp）。
+
+## 分析流程概览
+
+```
+原始测序数据
+    ↓
+┌─────────────────────────────────────┐
+│  预处理 (DADA2)                     │
+│  • 质量控制                         │
+│  • 错误校正                         │
+│  • ASV 推断                         │
+│  • 物种注释                         │
+└─────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────┐
+│  数据分析 (microeco)                │
+│  • 物种组成分析                     │
+│  • Alpha 多样性                     │
+│  • Beta 多样性                      │
+│  • 差异分析                         │
+│  • 网络分析                         │
+└─────────────────────────────────────┘
+    ↓
+生物学解释与科学发现
+```
+
+## 课程目标
+
+完成本课程后，您将能够：
+
+1. **理解原理**：理解微生物组数据分析的基本原理和方法
+2. **掌握工具**：熟练使用 DADA2 和 microeco 包进行数据分析
+3. **解读结果**：正确解读分析结果并进行生物学解释
+4. **可重复研究**：编写可重复的 R 代码和 Quarto 文档
+
+## 参考资源
+
+### 推荐阅读
+
+- Callahan, B. J., et al. (2016). DADA2: High-resolution sample inference from Illumina amplicon data. *Nature Methods*, 13(7), 581-583.
+- Liu, C., et al. (2021). microeco: An R package for data mining in microbial community ecology. *FEMS Microbiology Ecology*, 97(2), fiaa255.
+
+### 在线资源
+
+- [microeco 官方教程](https://chiliubio.github.io/microeco_tutorial)
+- [DADA2 教程](https://benjjneb.github.io/dada2/tutorial.html)
+- [Silva 数据库](https://www.arb-silva.de/)
+
+## 关于本教材
+
+本教材使用 Quarto 创建，结合了文字说明和可执行的 R 代码。您可以通过以下方式使用本教材：
+
+1. **学习模式**：阅读并理解每个章节的内容
+2. **实践模式**：在 RStudio 中打开项目，运行代码块
+3. **探索模式**：修改代码参数，观察结果变化
+
+祝您学习愉快！
