@@ -116,6 +116,7 @@ head(mt_rarafied$alpha_diversity)
 
 ```{r}
 #| label: alpha-diff-test
+require(FSA)
 
 # 创建 trans_alpha 对象
 t1 = trans_alpha$new(dataset = mt_rarafied, group = "treatment")

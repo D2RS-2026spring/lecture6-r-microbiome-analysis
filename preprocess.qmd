@@ -38,12 +38,14 @@ c(fnFs, fnRs) |> basename() |> sort()
 文件名包含 Sample ID，这里直接从 sample ID 获取实验处理。
 
 ```{r}
-sample.names = fnFs |> 
-    basename() |> 
-    str_extract("Sep25.*_[0-9]") |> 
+#| label: generate-metadata
+
+sample.names = fnFs |>
+    basename() |>
+    str_extract("Sep25.*_[0-9]") |>
     str_remove("^Sep25")
 
-meta = tibble(sample_id = sample.names) |> 
+meta = tibble(sample_id = sample.names) |>
     tidyr::separate(sample_id, c("treatment", "rep"), sep = "_", remove = FALSE)
 ```
 
@@ -76,6 +78,8 @@ plot_grid(p1, p2, ncol=2)
 ### 设置过滤文件的产生路径和名称
 
 ```{r}
+#| label: setup-filter-paths
+
 # Place filtered files in filtered/ subdirectory
 filtFs <- file.path(PATH_SEQENCING_RAW, "filtered", paste0(sample.names, "_F_filt.fq.gz"))
 filtRs <- file.path(PATH_SEQENCING_RAW, "filtered", paste0(sample.names, "_R_filt.fq.gz"))
@@ -87,6 +91,7 @@ names(filtRs) <- sample.names
 
 ```{r}
 #| label: filter-and-trim
+#| cache: true
 out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, 
               maxN = 0, maxEE = c(2,4), truncQ = 0, 
               rm.phix = FALSE, 
@@ -118,6 +123,7 @@ head(out)
 
 ```{r}
 #| label: learn-errors
+#| cache: true
 # 学习正向和反向的错误模型
 errF <- learnErrors(filtFs, multithread = TRUE)
 errR <- learnErrors(filtRs, multithread = TRUE)
@@ -144,6 +150,7 @@ plotErrors(errR, nominalQ = TRUE)
 
 ```{r}
 #| label: dereplication
+
 # 去除重复序列
 # 仅仅保留重复序列中的一条序列，以在后续序列处理中节省计算资源
 derepFs <- derepFastq(filtFs)
@@ -155,12 +162,16 @@ derepRs <- derepFastq(filtRs)
 
 ```{r}
 #| label: run-dada
+#| cache: true
+
 dadaFs <- dada(filtFs, err=errF, multithread = TRUE, verbose = FALSE)
 dadaRs <- dada(filtRs, err=errR, multithread = TRUE, verbose = FALSE)
 ```
 
 
 ```{r}
+#| label: view-dada-results
+
 dadaFs[[1]]
 ```
 
@@ -186,6 +197,8 @@ mergers2 <- mergePairs(dadaFs, derepFs, dadaRs, derepRs)
 - `$accept`：如果正向和反向去噪序列之间的重叠至少为minOverlap且最多有maxMismatch差异，则为TRUE。否则为FALSE。
 
 ```{r}
+#| label: view-merged-results
+
 # 查看合并后的序列
 head(mergers2[[1]]) |> as_tibble()
 ```
@@ -278,6 +291,8 @@ taxa <- assignTaxonomy(seqtab.nochim, SILVA_DB_FILE, multithread = TRUE, minBoot
 
 
 ```{r}
+#| label: view-taxonomy-results
+
 # 打印结果
 taxa |> as_tibble()
 ```
@@ -290,12 +305,16 @@ taxa |> as_tibble()
 将 ASV 序列保存为 FASTA 格式，以便后续使用。
 
 ```{r}
+#| label: extract-asv-sequences
+
 asv_sequence <- getSequences(seqtab.nochim)
 ```
 
 为序列指定唯一 ID。
 
 ```{r}
+#| label: define-hash-function
+
 library(digest)
 get_dna_id = function(seq, length = 12){
     hash = digest(seq, algo = "sha256", serialize = FALSE)
@@ -304,6 +323,8 @@ get_dna_id = function(seq, length = 12){
 ```
 
 ```{r}
+#| label: generate-asv-ids
+
 # 生成 ASV ID
 asv_id = paste0("ASV", sapply(asv_sequence, get_dna_id))
 
@@ -312,6 +333,8 @@ asv_fasta = paste0(">", asv_id, "\n", asv_sequence)
 ```
 
 ```{r}
+#| label: save-asv-fasta
+
 # 保存为 FASTA 文件
 writeLines(asv_fasta, "data/amplicon/sep25-asv.fasta")
 ```
@@ -322,6 +345,9 @@ writeLines(asv_fasta, "data/amplicon/sep25-asv.fasta")
 将 `seqtab.nochim` 和 `taxa` 保存为 CSV 文件，便于后续分析和共享。
 
 ```{r}
+#| label: save-asv-tables
+
+
 # ASV表格导出
 # 这里的 seqtab.nochim 是一个数值矩阵，行名是样本名称，列名是 ASV 序列
 colnames(seqtab.nochim) <- asv_id

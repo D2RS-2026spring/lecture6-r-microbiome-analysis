@@ -3,6 +3,11 @@ project:
 
 execute: 
   freeze: auto
+  error: true
+  warning: false
+
+filters: 
+  - quarto-ai-helper
 
 book:
   title: "Lecture 6: Microbiome Analysis with R"
