@@ -61,7 +61,30 @@ knitr::include_graphics("https://vnote-1251564393.cos.ap-chengdu.myqcloud.com/pi
 
 ### LEfSe 方法
 
-LEfSe（Linear Discriminant Analysis Effect Size）是一种经典的差异分析方法，结合非参数检验和线性判别分析。
+LEfSe（Linear Discriminant Analysis Effect Size）是一种经典的差异分析方法，由 Huttenhower 实验室于 2011 年提出。它结合**非参数统计检验**和**线性判别分析（LDA）**，用于发现不同组别间显著差异的生物标志物。
+
+#### LEfSe 的两步筛选策略
+
+1. **第一步：非参数检验（Kruskal-Wallis）**
+   - 检验各分类群在不同组间的丰度差异是否显著
+   - 仅保留 P < α（默认 0.05）的分类群
+
+2. **第二步：线性判别分析（LDA）**
+   - 对通过第一步筛选的分类群进行 LDA
+   - 计算每个分类群对组间差异的贡献度（LDA 分数）
+   - LDA 分数越高，表示该分类群的区分能力越强
+
+:::{.callout-note title="LDA 分数的解读"}
+- LDA > 2：通常被认为是显著的生物标志物
+- 条形图的红色/绿色（或其他颜色）表示该分类群在哪一组中富集
+- LDA 分数是对数尺度，分数为 2 表示该分类群在对应组中的丰度约为另一组的 100 倍（假设以 10 为底的对数）
+:::
+
+#### LEfSe 的局限性
+
+- 未校正组成性效应，可能存在假阳性
+- 主要用于两组或多组比较，对复杂实验设计支持有限
+- 作为探索性分析工具较好，但建议用其他方法验证
 
 ```{r}
 #| label: lefse-analysis
@@ -169,7 +192,34 @@ t1$plot_diff_bar(use_number = 1:20)
 
 ### ANCOM-BC2 方法
 
-ANCOM-BC2 是当前推荐的差异分析方法，通过估计和校正样本特异性偏倚，有效解决了组成性问题。
+ANCOM-BC2（Analysis of Compositions of Microbiomes with Bias Correction 2）是 2023 年发表在 *Nature Methods* 上的方法，是当前推荐的差异分析首选方法。
+
+#### ANCOM-BC2 的核心思想
+
+微生物组数据的组成性效应导致传统方法难以准确估计绝对丰度的变化。ANCOM-BC2 通过以下步骤解决这一问题：
+
+1. **估计样本特异性偏差（Sample-specific bias）**
+   - 每个样本的测序深度、DNA 提取效率等因素都会引入系统性偏差
+   - ANCOM-BC2 通过统计学方法估计这些偏差
+
+2. **校正组成性效应**
+   - 基于估计的偏差，将相对丰度数据转换为"校正后的绝对丰度"
+   - 这使得不同样本间的丰度比较更加可靠
+
+3. **多重检验校正**
+   - 自动进行多重检验校正（Benjamini-Hochberg FDR）
+   - 控制假阳性率
+
+#### 为何 ANCOM-BC2 优于传统方法？
+
+| 特性 | LEfSe | ANCOM-BC2 |
+|------|-------|-----------|
+| 校正组成性效应 | 否 | 是 |
+| 支持协变量 | 有限 | 是（如 pH、温度等） |
+| 假阳性控制 | 一般 | 较好 |
+| 计算速度 | 快 | 较慢 |
+
+**使用建议**：ANCOM-BC2 适合作为主要的差异分析方法，LEfSe 可作为辅助的可视化和探索工具。
 
 ```{r}
 #| label: ancombc2-analysis
