@@ -190,7 +190,7 @@ t1$plot_box(group = "treatment", xtext_angle = 0)
 
 **注意事项**：物种组成分析展示的是相对丰度数据，在解释时需要注意组成性效应（Compositional effect），即一个分类群的相对丰度增加可能是由于其他分类群减少所致，而非其绝对丰度真正增加。
 
-## 💡 小提示
+## 小提示
 
 **microeco** 包的使用文档参见：<https://chiliubio.github.io/microeco_tutorial>。
 

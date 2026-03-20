@@ -285,7 +285,7 @@ ggplot(alpha_env, aes(x = pH, y = Shannon, color = treatment)) +
 - 抽平过程会舍弃部分数据，对于低深度样本可能造成信息损失
 - 相对丰度数据可能存在组成性效应，解释时需谨慎
 
-## 💡 小提示
+## 小提示
 
 **microeco** 包的使用文档参见：<https://chiliubio.github.io/microeco_tutorial>。
 

@@ -404,7 +404,7 @@ t1$plot_network()
    - 横截面数据构建的网络无法反映相互作用的动态变化
    - 时间序列分析可以提供更丰富的信息
 
-## 💡 小提示
+## 小提示
 
 **microeco** 包的使用文档参见：<https://chiliubio.github.io/microeco_tutorial>。
 

@@ -338,7 +338,7 @@ t1$plot_diff_abund(use_number = 1:20)
 
 4. **多重检验**：当检验大量分类群时，假阳性风险增加，应使用校正后的 P 值
 
-## 💡 小提示
+## 小提示
 
 **microeco** 包的使用文档参见：<https://chiliubio.github.io/microeco_tutorial>。
 

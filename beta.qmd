@@ -306,7 +306,7 @@ t1$res_anosim
 3. **组成性效应**：Beta 多样性基于相对丰度数据，存在组成性效应，解释时需谨慎
 4. **多重检验问题**：进行多组比较时，需要考虑 P 值校正
 
-## 💡 小提示
+## 小提示
 
 **microeco** 包的使用文档参见：<https://chiliubio.github.io/microeco_tutorial>。
 
