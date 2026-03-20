@@ -39,6 +39,7 @@
 4. **结果解读**：结合生物学知识解释显著差异的分类群
 
 **注意事项**：
+
 - 分类表必须经过 `tidy_taxonomy()` 处理，确保格式统一
 - 不同方法对数据的假设不同，需根据数据特点选择
 - 多重检验校正（FDR/Benjamini-Hochberg）是必需的
@@ -79,6 +80,7 @@ head(t1$res_diff)
 ```
 
 **参数说明**：
+
 - `method = "lefse"`：指定使用 LEfSe 方法
 - `alpha = 0.05`：显著性水平阈值
 - `p_adjust_method = "none"`：不进行 p 值校正（LEfSe 内部有自己的过滤机制）
@@ -96,6 +98,7 @@ t1$plot_diff_bar(use_number = 1:20)
 ```
 
 **图形解读**：
+
 - 条形长度表示 LDA 分数（对数尺度），分数越大表示差异越显著
 - 颜色表示该分类群富集的组别
 - 通常 LDA > 2 被认为是显著的生物标志物
@@ -119,16 +122,19 @@ t1$plot_diff_abund(plot_type = "errorbar")
 #| fig-width: 12
 #| fig-height: 10
 
+require(ggtree)
 # 绘制系统发育树图（需要 ggtree 包）
 # 注意：若分类表格式不统一可能导致错误，请确保已运行 tidy_taxonomy()
 t1$plot_diff_cladogram(
   use_taxa_num = 200,
   use_feature_num = 50,
-  clade_label_level = 5
+  clade_label_level = 5,
+  group = "treatment"
 )
 ```
 
 **图形解读**：
+
 - 树的分支表示分类学层级
 - 节点颜色表示该分支富集的组别
 - 字母标记对应图例中的具体分类群
@@ -157,6 +163,7 @@ t1$plot_diff_bar(use_number = 1:20)
 ```
 
 **MeanDecreaseGini**：
+
 - 表示该分类群对分类模型的贡献度
 - 值越大表示该分类群的区分能力越强
 
@@ -186,6 +193,7 @@ t1$plot_diff_bar(
 ```
 
 **ANCOM-BC2 的优势**：
+
 - 校正组成性效应
 - 控制假阳性率
 - 支持多组比较和协变量调整
@@ -206,7 +214,7 @@ t1 = trans_diff$new(
 )
 
 # 筛选显著的结果
-t1$res_diff %<>% subset(Significance %in% c("*", "**", "***"))
+t1$res_diff = t1$res_diff %>% subset(Significance %in% c("*", "**", "***"))
 t1$plot_diff_abund(add_sig = TRUE)
 ```
 

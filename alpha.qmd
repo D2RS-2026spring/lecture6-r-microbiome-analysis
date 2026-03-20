@@ -117,6 +117,7 @@ head(mt_rarafied$alpha_diversity)
 ```{r}
 #| label: alpha-diff-test
 require(FSA)
+require(rcompanion)
 
 # 创建 trans_alpha 对象
 t1 = trans_alpha$new(dataset = mt_rarafied, group = "treatment")
@@ -129,6 +130,7 @@ t1$res_diff
 ```
 
 **方法选择说明**：
+
 - **KW_dunn**：Kruskal-Wallis 检验结合 Dunn's 事后检验，适用于非正态分布数据的多组比较
 - **anova**：方差分析，适用于正态分布数据
 - **wilcox**：Wilcoxon 秩和检验，适用于两组比较
@@ -142,6 +144,7 @@ t1$res_diff
 #| fig-cap: "不同处理组的 Alpha 多样性比较"
 #| fig-width: 12
 #| fig-height: 8
+require(patchwork)
 
 # 绘制所有指标的箱线图
 plots = lapply(measures, function(x){
@@ -246,6 +249,7 @@ ggplot(alpha_env, aes(x = pH, y = Shannon, color = treatment)) +
    - 若 Alpha 多样性无显著差异，但物种组成可能有变化，建议关注 Beta 多样性分析
 
 **分析局限性说明**：
+
 - Alpha 多样性仅反映样本内的多样性特征，无法说明样本间的相似性差异
 - 抽平过程会舍弃部分数据，对于低深度样本可能造成信息损失
 - 相对丰度数据可能存在组成性效应，解释时需谨慎

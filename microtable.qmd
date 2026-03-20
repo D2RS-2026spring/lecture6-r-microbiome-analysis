@@ -65,7 +65,8 @@ sample_table = column_to_rownames(sample_table, var = names(sample_table)[1])
 ```{r}
 #| label: load-taxonomy-table
 taxon_table = read_csv(tax_table_file)
-taxon_table = column_to_rownames(taxon_table, var = names(taxon_table)[1])
+taxon_table = column_to_rownames(taxon_table, var = names(taxon_table)[1]) |> 
+  mutate(Genus = if_else(str_detect(Genus, "Burkholderia"), "Burkholderia", Genus))
 ```
 
 

@@ -3,7 +3,7 @@
 测试数据下载地址：
 
 * https://cloud.bio-spring.top/index.php/s/CZqYgzJWLczo2Rp
-* 备用：QQ 群文件 `data.zip`
+* 备用：QQ 群文件 `lecture6-amplicon-rawdata.zip`
 
 下载后请解压缩到项目的 `data` 文件夹，目录结构如下所示（`tree`）。
 
