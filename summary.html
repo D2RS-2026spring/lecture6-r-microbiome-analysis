@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>7&nbsp; 总结 – Lecture 6: Microbiome Analysis with R</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./references.html" rel="next">
+<link href="./network.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<style>
+/* quarto-ai-helper styles */
+
+/* ── 错误块整体样式 ──────────────────────────────────────────────────── */
+.cell-output-error.ai-helper-styled {
+  border-left: 4px solid #dc3545;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
+  border-radius: 8px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.12);
+}
+
+.cell-output-error.ai-helper-styled pre {
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+  color: #721c24;
+  font-size: 0.9em;
+}
+
+.cell-output-error.ai-helper-styled code {
+  background: transparent;
+  color: #721c24;
+}
+
+/* ── 错误标签 ────────────────────────────────────────────────────────── */
+.ai-helper-error-label {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.85em;
+  color: #dc3545;
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+
+/* ── 按钮容器 ────────────────────────────────────────────────────────── */
+.quarto-ai-helper-buttons {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #e0c8c8;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── ChatGPT 按钮 ────────────────────────────────────────────────────── */
+.quarto-ai-helper-buttons .btn-success {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border: none;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.quarto-ai-helper-buttons .btn-success:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+/* ── 复制按钮 ────────────────────────────────────────────────────────── */
+.quarto-ai-helper-buttons .btn-outline-secondary {
+  border-radius: 20px;
+  padding: 6px 16px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.quarto-ai-helper-buttons .btn-outline-secondary:hover {
+  transform: translateY(-1px);
+}
+
+</style>
+
+
+</head>
+
+<body class="nav-sidebar floating">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./summary.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">总结</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Lecture 6: Microbiome Analysis with R</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">前言</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./preprocess.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">测序数据预处理</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./taxonomy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">群落结构分析</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./alpha.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">α 多样性</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./beta.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">β 多样性</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./differ.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">菌群差异分析</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./network.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">网络分析</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./summary.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">总结</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./references.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">References</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#核心内容回顾" id="toc-核心内容回顾" class="nav-link active" data-scroll-target="#核心内容回顾"><span class="header-section-number">7.1</span> 核心内容回顾</a>
+  <ul class="collapse">
+  <li><a href="#测序数据预处理dada2" id="toc-测序数据预处理dada2" class="nav-link" data-scroll-target="#测序数据预处理dada2"><span class="header-section-number">7.1.1</span> 测序数据预处理（DADA2）</a></li>
+  <li><a href="#构建-microtable-对象" id="toc-构建-microtable-对象" class="nav-link" data-scroll-target="#构建-microtable-对象"><span class="header-section-number">7.1.2</span> 构建 microtable 对象</a></li>
+  <li><a href="#群落结构分析" id="toc-群落结构分析" class="nav-link" data-scroll-target="#群落结构分析"><span class="header-section-number">7.1.3</span> 群落结构分析</a></li>
+  <li><a href="#alpha-多样性分析" id="toc-alpha-多样性分析" class="nav-link" data-scroll-target="#alpha-多样性分析"><span class="header-section-number">7.1.4</span> Alpha 多样性分析</a></li>
+  <li><a href="#beta-多样性分析" id="toc-beta-多样性分析" class="nav-link" data-scroll-target="#beta-多样性分析"><span class="header-section-number">7.1.5</span> Beta 多样性分析</a></li>
+  <li><a href="#差异分析" id="toc-差异分析" class="nav-link" data-scroll-target="#差异分析"><span class="header-section-number">7.1.6</span> 差异分析</a></li>
+  <li><a href="#网络分析" id="toc-网络分析" class="nav-link" data-scroll-target="#网络分析"><span class="header-section-number">7.1.7</span> 网络分析</a></li>
+  </ul></li>
+  <li><a href="#分析流程总结图" id="toc-分析流程总结图" class="nav-link" data-scroll-target="#分析流程总结图"><span class="header-section-number">7.2</span> 分析流程总结图</a></li>
+  <li><a href="#关键注意事项" id="toc-关键注意事项" class="nav-link" data-scroll-target="#关键注意事项"><span class="header-section-number">7.3</span> 关键注意事项</a>
+  <ul class="collapse">
+  <li><a href="#数据质量" id="toc-数据质量" class="nav-link" data-scroll-target="#数据质量"><span class="header-section-number">7.3.1</span> 数据质量</a></li>
+  <li><a href="#统计分析" id="toc-统计分析" class="nav-link" data-scroll-target="#统计分析"><span class="header-section-number">7.3.2</span> 统计分析</a></li>
+  <li><a href="#结果解释" id="toc-结果解释" class="nav-link" data-scroll-target="#结果解释"><span class="header-section-number">7.3.3</span> 结果解释</a></li>
+  </ul></li>
+  <li><a href="#拓展学习方向" id="toc-拓展学习方向" class="nav-link" data-scroll-target="#拓展学习方向"><span class="header-section-number">7.4</span> 拓展学习方向</a></li>
+  <li><a href="#推荐资源" id="toc-推荐资源" class="nav-link" data-scroll-target="#推荐资源"><span class="header-section-number">7.5</span> 推荐资源</a>
+  <ul class="collapse">
+  <li><a href="#文档与教程" id="toc-文档与教程" class="nav-link" data-scroll-target="#文档与教程"><span class="header-section-number">7.5.1</span> 文档与教程</a></li>
+  <li><a href="#重要文献" id="toc-重要文献" class="nav-link" data-scroll-target="#重要文献"><span class="header-section-number">7.5.2</span> 重要文献</a></li>
+  <li><a href="#r-包资源" id="toc-r-包资源" class="nav-link" data-scroll-target="#r-包资源"><span class="header-section-number">7.5.3</span> R 包资源</a></li>
+  </ul></li>
+  <li><a href="#结语" id="toc-结语" class="nav-link" data-scroll-target="#结语"><span class="header-section-number">7.6</span> 结语</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">总结</span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>本讲系统介绍了使用 R 语言进行微生物组数据分析的完整流程，从原始测序数据预处理到复杂的生态网络分析。通过学习本讲内容，您应该已经掌握了以下核心技能：</p>
+<section id="核心内容回顾" class="level2" data-number="7.1">
+<h2 data-number="7.1" class="anchored" data-anchor-id="核心内容回顾"><span class="header-section-number">7.1</span> 核心内容回顾</h2>
+<section id="测序数据预处理dada2" class="level3" data-number="7.1.1">
+<h3 data-number="7.1.1" class="anchored" data-anchor-id="测序数据预处理dada2"><span class="header-section-number">7.1.1</span> 测序数据预处理（DADA2）</h3>
+<ul>
+<li>学习了 DADA2 分析流程：质量控制、错误率学习、去噪、序列拼接、去除嵌合体、分类注释</li>
+<li>理解了 ASV（Amplicon Sequence Variants）相比传统 OTU 聚类的优势</li>
+<li>掌握了使用 SILVA 数据库进行物种注释的方法</li>
+</ul>
+<p><strong>关键要点</strong>：</p>
+<ul>
+<li>测序质量控制是确保数据可靠性的第一步</li>
+<li>错误率学习是 DADA2 实现高精度去噪的核心</li>
+<li>ASV 提供了单核苷酸分辨率的物种区分能力</li>
+</ul>
+</section>
+<section id="构建-microtable-对象" class="level3" data-number="7.1.2">
+<h3 data-number="7.1.2" class="anchored" data-anchor-id="构建-microtable-对象"><span class="header-section-number">7.1.2</span> 构建 microtable 对象</h3>
+<ul>
+<li>学会了将各类数据（OTU/ASV 表、样本表、分类表）整合为 microtable 对象</li>
+<li>掌握了数据清洗和格式标准化的方法</li>
+<li>理解了 microeco 包的数据结构和工作原理</li>
+</ul>
+<p><strong>关键要点</strong>：</p>
+<ul>
+<li>microtable 是 microeco 包分析的基础数据结构</li>
+<li>数据格式的标准化（行=特征，列=样本）至关重要</li>
+<li><code>tidy_taxonomy()</code> 和 <code>tidy_dataset()</code> 是数据预处理的关键步骤</li>
+</ul>
+</section>
+<section id="群落结构分析" class="level3" data-number="7.1.3">
+<h3 data-number="7.1.3" class="anchored" data-anchor-id="群落结构分析"><span class="header-section-number">7.1.3</span> 群落结构分析</h3>
+<ul>
+<li>使用 <code>trans_abund</code> 类进行物种组成的可视化</li>
+<li>掌握了柱状图、热图、箱线图等多种可视化方法</li>
+<li>学会了在不同分类等级（门、纲、目、科、属）分析群落组成</li>
+</ul>
+<p><strong>关键要点</strong>： - 多分类等级的分析有助于从不同分辨率理解群落 - 可视化是发现科学问题的起点 - 相对丰度数据需要注意组成性效应</p>
+</section>
+<section id="alpha-多样性分析" class="level3" data-number="7.1.4">
+<h3 data-number="7.1.4" class="anchored" data-anchor-id="alpha-多样性分析"><span class="header-section-number">7.1.4</span> Alpha 多样性分析</h3>
+<ul>
+<li>理解了 Alpha 多样性的生态学意义和常用指标</li>
+<li>学会了数据抽平（Rarefaction）的方法</li>
+<li>掌握了组间差异检验和可视化的方法</li>
+</ul>
+<p><strong>关键要点</strong>：</p>
+<ul>
+<li>Observed/Chao1 反映物种丰富度，Shannon/Simpson 反映综合多样性</li>
+<li>抽平是消除测序深度差异影响的标准方法</li>
+<li>统计方法的选择应根据数据分布特征决定</li>
+</ul>
+</section>
+<section id="beta-多样性分析" class="level3" data-number="7.1.5">
+<h3 data-number="7.1.5" class="anchored" data-anchor-id="beta-多样性分析"><span class="header-section-number">7.1.5</span> Beta 多样性分析</h3>
+<ul>
+<li>理解了 Beta 多样性的概念和常用距离指标</li>
+<li>掌握了 PCoA 和 NMDS 排序分析方法</li>
+<li>学会了 PERMANOVA 等统计检验方法</li>
+</ul>
+<p><strong>关键要点</strong>：</p>
+<ul>
+<li>Bray-Curtis 是生态学中最常用的距离指标</li>
+<li>排序分析可以直观展示样本间的相似性关系</li>
+<li>PERMANOVA 是检验组间差异显著性的标准方法</li>
+</ul>
+</section>
+<section id="差异分析" class="level3" data-number="7.1.6">
+<h3 data-number="7.1.6" class="anchored" data-anchor-id="差异分析"><span class="header-section-number">7.1.6</span> 差异分析</h3>
+<ul>
+<li>学习了多种差异分析方法（LEfSe、ANCOM-BC2、随机森林等）</li>
+<li>理解了不同方法的特点和适用场景</li>
+<li>掌握了生物标志物的识别和可视化</li>
+</ul>
+<p><strong>关键要点</strong>：</p>
+<ul>
+<li>不同方法可能产生不同结果，建议多种方法互相验证</li>
+<li>ANCOM-BC2 是当前推荐的校正组成性效应的方法</li>
+<li>统计显著性不等于生物学重要性，需要结合功能知识解释</li>
+</ul>
+</section>
+<section id="网络分析" class="level3" data-number="7.1.7">
+<h3 data-number="7.1.7" class="anchored" data-anchor-id="网络分析"><span class="header-section-number">7.1.7</span> 网络分析</h3>
+<ul>
+<li>理解了微生物共现网络的生态学意义</li>
+<li>学会了网络构建、模块划分和拓扑分析</li>
+<li>掌握了节点角色分类和关键物种识别</li>
+</ul>
+<p><strong>关键要点</strong>：</p>
+<ul>
+<li>网络分析可以揭示物种间的潜在相互作用</li>
+<li>模块结构反映了功能相关的微生物群组</li>
+<li>网络枢纽可能是群落中的关键物种</li>
+</ul>
+</section>
+</section>
+<section id="分析流程总结图" class="level2" data-number="7.2">
+<h2 data-number="7.2" class="anchored" data-anchor-id="分析流程总结图"><span class="header-section-number">7.2</span> 分析流程总结图</h2>
+<pre><code>原始测序数据 (FASTQ)
+    ↓
+DADA2 预处理
+    ↓
+ASV 表 + 分类表 + 样本表
+    ↓
+构建 microtable 对象
+    ↓
+┌─────────────┬─────────────┬─────────────┬─────────────┐
+↓             ↓             ↓             ↓             ↓
+物种组成分析  Alpha 多样性   Beta 多样性   差异分析      网络分析
+(Bar/Heatmap) (箱线图)       (PCoA/NMDS)   (LEfSe/ANCOM) (共现网络)
+↓             ↓             ↓             ↓             ↓
+群落特征描述   丰富度评估    组间差异检验   生物标志物    相互作用推断
+└─────────────┴─────────────┴─────────────┴─────────────┘
+                            ↓
+                    综合生物学解释</code></pre>
+</section>
+<section id="关键注意事项" class="level2" data-number="7.3">
+<h2 data-number="7.3" class="anchored" data-anchor-id="关键注意事项"><span class="header-section-number">7.3</span> 关键注意事项</h2>
+<section id="数据质量" class="level3" data-number="7.3.1">
+<h3 data-number="7.3.1" class="anchored" data-anchor-id="数据质量"><span class="header-section-number">7.3.1</span> 数据质量</h3>
+<ol type="1">
+<li><strong>质量控制</strong>：始终从测序质量评估开始，确保数据可靠性</li>
+<li><strong>数据过滤</strong>：适当过滤低丰度特征，减少噪声和多重检验负担</li>
+<li><strong>数据标准化</strong>：根据分析类型选择适当的标准化方法（抽平、CLR 等）</li>
+</ol>
+</section>
+<section id="统计分析" class="level3" data-number="7.3.2">
+<h3 data-number="7.3.2" class="anchored" data-anchor-id="统计分析"><span class="header-section-number">7.3.2</span> 统计分析</h3>
+<ol type="1">
+<li><strong>方法选择</strong>：根据数据分布和研究问题选择合适的统计方法</li>
+<li><strong>多重检验</strong>：进行多重比较时注意校正 P 值，控制假阳性率</li>
+<li><strong>效应量</strong>：关注效应量大小，不仅依赖 P 值判断生物学意义</li>
+</ol>
+</section>
+<section id="结果解释" class="level3" data-number="7.3.3">
+<h3 data-number="7.3.3" class="anchored" data-anchor-id="结果解释"><span class="header-section-number">7.3.3</span> 结果解释</h3>
+<ol type="1">
+<li><strong>组成性效应</strong>：相对丰度数据存在组成性效应，解释差异时需谨慎</li>
+<li><strong>相关性≠因果性</strong>：网络分析中的相关关系不证明直接相互作用</li>
+<li><strong>功能推断</strong>：基于分类学的功能推断是间接的，建议通过功能预测或实验验证</li>
+</ol>
+</section>
+</section>
+<section id="拓展学习方向" class="level2" data-number="7.4">
+<h2 data-number="7.4" class="anchored" data-anchor-id="拓展学习方向"><span class="header-section-number">7.4</span> 拓展学习方向</h2>
+<ol type="1">
+<li><strong>功能预测分析</strong>：
+<ul>
+<li>使用 PICRUSt2 预测微生物群落的功能潜能</li>
+<li>结合代谢通路分析深入理解群落功能</li>
+</ul></li>
+<li><strong>时间序列分析</strong>：
+<ul>
+<li>如果拥有时间序列数据，可分析群落的动态变化</li>
+<li>使用 mecoturn 包进行群落转变分析</li>
+</ul></li>
+<li><strong>多组学整合</strong>：
+<ul>
+<li>结合宏基因组、代谢组等数据进行全面分析</li>
+<li>使用 trans_env 类分析微生物-环境因子关系</li>
+</ul></li>
+<li><strong>高级统计方法</strong>：
+<ul>
+<li>学习混合效应模型处理复杂实验设计</li>
+<li>探索贝叶斯方法在微生物组分析中的应用</li>
+</ul></li>
+<li><strong>可重复性研究</strong>：
+<ul>
+<li>使用 renv 包管理分析环境</li>
+<li>编写可重复的 R Markdown/Quarto 文档</li>
+<li>将分析流程封装为可重用的脚本或包</li>
+</ul></li>
+</ol>
+</section>
+<section id="推荐资源" class="level2" data-number="7.5">
+<h2 data-number="7.5" class="anchored" data-anchor-id="推荐资源"><span class="header-section-number">7.5</span> 推荐资源</h2>
+<section id="文档与教程" class="level3" data-number="7.5.1">
+<h3 data-number="7.5.1" class="anchored" data-anchor-id="文档与教程"><span class="header-section-number">7.5.1</span> 文档与教程</h3>
+<ul>
+<li><a href="https://chiliubio.github.io/microeco_tutorial">microeco 官方教程</a></li>
+<li><a href="https://benjjneb.github.io/dada2/">DADA2 官方文档</a></li>
+<li><a href="https://docs.qiime2.org/">QIIME 2 文档</a></li>
+</ul>
+</section>
+<section id="重要文献" class="level3" data-number="7.5.2">
+<h3 data-number="7.5.2" class="anchored" data-anchor-id="重要文献"><span class="header-section-number">7.5.2</span> 重要文献</h3>
+<ol type="1">
+<li>Callahan et al.&nbsp;(2016). DADA2: High-resolution sample inference from Illumina amplicon data. <em>Nature Methods</em></li>
+<li>McMurdie &amp; Holmes (2013). phyloseq: An R package for reproducible interactive analysis and graphics of microbiome census data. <em>PLoS ONE</em></li>
+<li>Mallick et al.&nbsp;(2021). Experimental design and quantitative analysis of microbial community multiomics. <em>Genome Biology</em></li>
+</ol>
+</section>
+<section id="r-包资源" class="level3" data-number="7.5.3">
+<h3 data-number="7.5.3" class="anchored" data-anchor-id="r-包资源"><span class="header-section-number">7.5.3</span> R 包资源</h3>
+<ul>
+<li><strong>microeco</strong>: 微生物组全面分析</li>
+<li><strong>phyloseq</strong>: 微生物组数据结构和管理</li>
+<li><strong>vegan</strong>: 生态学统计分析</li>
+<li><strong>ggplot2</strong>: 数据可视化</li>
+</ul>
+</section>
+</section>
+<section id="结语" class="level2" data-number="7.6">
+<h2 data-number="7.6" class="anchored" data-anchor-id="结语"><span class="header-section-number">7.6</span> 结语</h2>
+<p>微生物组数据分析是一个快速发展的领域，新的方法和工具不断涌现。掌握本讲介绍的基础分析流程后，建议保持对最新文献和方法的关注，根据研究问题的需要不断学习新的技能。</p>
+<p>记住，<strong>数据分析的目的是回答科学问题，而非仅仅运行代码</strong>。在每一步分析中，都应该思考：</p>
+<ul>
+<li>这个分析要解决什么生物学问题？</li>
+<li>结果是否符合生态学原理？</li>
+<li>如何验证和深化初步发现？</li>
+</ul>
+<p>希望本讲能够为您的微生物组研究打下坚实基础，祝您科研顺利！</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./network.html" class="pagination-link" aria-label="网络分析">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">网络分析</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./references.html" class="pagination-link" aria-label="References">
+        <span class="nav-page-text">References</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<script>
+/* quarto-ai-helper.js */
+(function () {
+  // ── i18n 多语言支持（根据浏览器/系统语言自动切换）──────────────────────
+  var lang = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+  var isChinese = lang.startsWith("zh");
+
+  var i18n = {
+    zh: {
+      askChatGPT: "🤖 问问 ChatGPT",
+      copyPrompt: "📋 复制提问到其它大模型",
+      copied: "✅ 已复制到剪贴板",
+      errorLabel: "⚠️ 代码运行出错",
+      chatTooltip: "将源代码和报错信息发送给 ChatGPT，获取修复建议",
+      copyTooltip: "复制格式化的提问内容到剪贴板，方便粘贴到其它大模型",
+      promptTemplate: function (source, error, language) {
+        return "我在 Quarto 文档中运行 " + language + " 代码时遇到了报错，请帮我分析原因并修复代码。\n\n" +
+          "## 源代码\n\n" +
+          "```" + language.toLowerCase() + "\n" + source + "\n```\n\n" +
+          "## 报错信息\n\n" +
+          "```\n" + error + "\n```\n\n" +
+          "请用 Markdown 格式回答，解释原因并给出修复后的代码。";
+      },
+      noSource: "（无法获取源代码）"
+    },
+    en: {
+      askChatGPT: "🤖 Ask ChatGPT",
+      copyPrompt: "📋 Copy prompt for other AI",
+      copied: "✅ Copied to clipboard",
+      errorLabel: "⚠️ Code Error",
+      chatTooltip: "Send the source code and error message to ChatGPT for a fix",
+      copyTooltip: "Copy a formatted prompt to clipboard for use with other AI models",
+      promptTemplate: function (source, error, language) {
+        return "I encountered an error while running " + language + " code in a Quarto document. " +
+          "Please help me diagnose the issue and fix the code.\n\n" +
+          "## Source Code\n\n" +
+          "```" + language.toLowerCase() + "\n" + source + "\n```\n\n" +
+          "## Error Message\n\n" +
+          "```\n" + error + "\n```\n\n" +
+          "Please respond in Markdown format with a brief explanation and the fixed code.";
+      },
+      noSource: "(Source code not available)"
+    }
+  };
+
+  var t = isChinese ? i18n.zh : i18n.en;
+
+  // ── 辅助函数：检测代码语言 ─────────────────────────────────────────────
+  function detectLanguage(sourceCodeBlock) {
+    if (!sourceCodeBlock) return "R";
+    var classList = sourceCodeBlock.className || "";
+    if (classList.indexOf("python") !== -1) return "Python";
+    if (classList.indexOf("julia") !== -1) return "Julia";
+    if (classList.indexOf("bash") !== -1) return "Bash";
+    if (classList.indexOf("js") !== -1 || classList.indexOf("javascript") !== -1) return "JavaScript";
+    return "R";
+  }
+
+  // ── 辅助函数：获取完整的源代码 ────────────────────────────────────────
+  function getSourceCode(parentCell) {
+    if (!parentCell) return null;
+    var codeBlocks = parentCell.querySelectorAll("pre.sourceCode");
+    if (codeBlocks.length === 0) return null;
+    var parts = [];
+    for (var i = 0; i < codeBlocks.length; i++) {
+      var code = codeBlocks[i].innerText.trim();
+      if (code) parts.push(code);
+    }
+    return parts.length > 0 ? parts.join("\n\n") : null;
+  }
+
+  // ── 主逻辑 ──────────────────────────────────────────────────────────────
+  function initAIHelper() {
+    var errorBlocks = document.querySelectorAll(".cell-output-error");
+
+    errorBlocks.forEach(function (block) {
+      // 避免重复添加
+      if (block.classList.contains("ai-helper-styled")) return;
+
+      // 找到所属 cell
+      var parentCell = block.closest(".cell");
+
+      // 获取源代码块（用于检测语言）
+      var firstSourceBlock = parentCell
+        ? parentCell.querySelector("pre.sourceCode")
+        : null;
+
+      // 检测编程语言
+      var language = detectLanguage(firstSourceBlock);
+
+      // 先保存原始错误文本（在修改 DOM 之前）
+      var originalErrorText = block.innerText.trim();
+
+      // ── 给错误块添加样式类 ────────────────────────────────────────────
+      block.classList.add("ai-helper-styled");
+
+      // ── 在错误信息顶部添加标签 ────────────────────────────────────────
+      var label = document.createElement("div");
+      label.className = "ai-helper-error-label";
+      label.textContent = t.errorLabel;
+      block.insertBefore(label, block.firstChild);
+
+      // 构造发送给大模型的完整 prompt
+      var getFullPrompt = function () {
+        var sourceCode = getSourceCode(parentCell) || t.noSource;
+        return t.promptTemplate(sourceCode, originalErrorText, language);
+      };
+
+      // ── 按钮容器（放在错误块内部底部）─────────────────────────────────
+      var container = document.createElement("div");
+      container.className = "quarto-ai-helper-buttons";
+
+      // ── ChatGPT 按钮 ─────────────────────────────────────────────────────
+      var chatBtn = document.createElement("button");
+      chatBtn.innerText = t.askChatGPT;
+      chatBtn.className = "btn btn-success btn-sm";
+      chatBtn.title = t.chatTooltip;
+      chatBtn.onclick = function () {
+        var prompt = getFullPrompt();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(prompt).catch(function () {});
+        }
+        window.open(
+          "https://chatgpt.com/?q=" + encodeURIComponent(prompt),
+          "_blank"
+        );
+      };
+
+      // ── 复制按钮 ─────────────────────────────────────────────────────────
+      var copyBtn = document.createElement("button");
+      copyBtn.innerText = t.copyPrompt;
+      copyBtn.className = "btn btn-outline-secondary btn-sm";
+      copyBtn.title = t.copyTooltip;
+      copyBtn.onclick = function () {
+        var prompt = getFullPrompt();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(prompt).then(function () {
+            copyBtn.innerText = t.copied;
+          });
+        } else {
+          var ta = document.createElement("textarea");
+          ta.value = prompt;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          try {
+            document.execCommand("copy");
+            copyBtn.innerText = t.copied;
+          } catch (e) {}
+          document.body.removeChild(ta);
+        }
+      };
+
+      container.appendChild(chatBtn);
+      container.appendChild(copyBtn);
+
+      // 按钮放在错误块内部底部
+      block.appendChild(container);
+    });
+  }
+
+  // ── 确保 DOM 已就绪后执行 ────────────────────────────────────────────────
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAIHelper);
+  } else {
+    initAIHelper();
+  }
+})();
+
+</script>
+
+
+
+
+</body></html>

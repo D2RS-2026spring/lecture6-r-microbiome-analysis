@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>1&nbsp; 测序数据预处理 – Lecture 6: Microbiome Analysis with R</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./taxonomy.html" rel="next">
+<link href="./index.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<style>
+/* quarto-ai-helper styles */
+
+/* ── 错误块整体样式 ──────────────────────────────────────────────────── */
+.cell-output-error.ai-helper-styled {
+  border-left: 4px solid #dc3545;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
+  border-radius: 8px;
+  padding: 16px 18px;
+  margin-top: 10px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.12);
+}
+
+.cell-output-error.ai-helper-styled pre {
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+  color: #721c24;
+  font-size: 0.9em;
+}
+
+.cell-output-error.ai-helper-styled code {
+  background: transparent;
+  color: #721c24;
+}
+
+/* ── 错误标签 ────────────────────────────────────────────────────────── */
+.ai-helper-error-label {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.85em;
+  color: #dc3545;
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+
+/* ── 按钮容器 ────────────────────────────────────────────────────────── */
+.quarto-ai-helper-buttons {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #e0c8c8;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── ChatGPT 按钮 ────────────────────────────────────────────────────── */
+.quarto-ai-helper-buttons .btn-success {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border: none;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.quarto-ai-helper-buttons .btn-success:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+/* ── 复制按钮 ────────────────────────────────────────────────────────── */
+.quarto-ai-helper-buttons .btn-outline-secondary {
+  border-radius: 20px;
+  padding: 6px 16px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.quarto-ai-helper-buttons .btn-outline-secondary:hover {
+  transform: translateY(-1px);
+}
+
+</style>
+
+
+</head>
+
+<body class="nav-sidebar floating">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./preprocess.html"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">测序数据预处理</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Lecture 6: Microbiome Analysis with R</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">前言</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./preprocess.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">测序数据预处理</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./taxonomy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">群落结构分析</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./alpha.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">α 多样性</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./beta.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">β 多样性</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./differ.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">菌群差异分析</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./network.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">网络分析</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./summary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">总结</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./references.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">References</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#数据准备" id="toc-数据准备" class="nav-link active" data-scroll-target="#数据准备"><span class="header-section-number">1.1</span> 数据准备</a></li>
+  <li><a href="#分析概述" id="toc-分析概述" class="nav-link" data-scroll-target="#分析概述"><span class="header-section-number">1.2</span> 分析概述</a></li>
+  <li><a href="#加载需要的包" id="toc-加载需要的包" class="nav-link" data-scroll-target="#加载需要的包"><span class="header-section-number">1.3</span> 加载需要的包</a></li>
+  <li><a href="#检查实验数据" id="toc-检查实验数据" class="nav-link" data-scroll-target="#检查实验数据"><span class="header-section-number">1.4</span> 检查实验数据</a>
+  <ul class="collapse">
+  <li><a href="#生成-metadata" id="toc-生成-metadata" class="nav-link" data-scroll-target="#生成-metadata"><span class="header-section-number">1.4.1</span> 生成 metadata</a></li>
+  <li><a href="#查看文件的测序质量" id="toc-查看文件的测序质量" class="nav-link" data-scroll-target="#查看文件的测序质量"><span class="header-section-number">1.4.2</span> 查看文件的测序质量</a></li>
+  </ul></li>
+  <li><a href="#过滤和修剪" id="toc-过滤和修剪" class="nav-link" data-scroll-target="#过滤和修剪"><span class="header-section-number">1.5</span> 过滤和修剪</a>
+  <ul class="collapse">
+  <li><a href="#设置过滤文件的产生路径和名称" id="toc-设置过滤文件的产生路径和名称" class="nav-link" data-scroll-target="#设置过滤文件的产生路径和名称"><span class="header-section-number">1.5.1</span> 设置过滤文件的产生路径和名称</a></li>
+  <li><a href="#对原始数据进行过滤" id="toc-对原始数据进行过滤" class="nav-link" data-scroll-target="#对原始数据进行过滤"><span class="header-section-number">1.5.2</span> 对原始数据进行过滤</a></li>
+  <li><a href="#估计测序错误率" id="toc-估计测序错误率" class="nav-link" data-scroll-target="#估计测序错误率"><span class="header-section-number">1.5.3</span> 估计测序错误率</a></li>
+  <li><a href="#序列去重" id="toc-序列去重" class="nav-link" data-scroll-target="#序列去重"><span class="header-section-number">1.5.4</span> 序列去重</a></li>
+  <li><a href="#根据模型进行匹配" id="toc-根据模型进行匹配" class="nav-link" data-scroll-target="#根据模型进行匹配"><span class="header-section-number">1.5.5</span> 根据模型进行匹配</a></li>
+  </ul></li>
+  <li><a href="#asv-表" id="toc-asv-表" class="nav-link" data-scroll-target="#asv-表"><span class="header-section-number">1.6</span> ASV 表</a>
+  <ul class="collapse">
+  <li><a href="#序列拼接" id="toc-序列拼接" class="nav-link" data-scroll-target="#序列拼接"><span class="header-section-number">1.6.1</span> 序列拼接</a></li>
+  <li><a href="#生成-asv-表" id="toc-生成-asv-表" class="nav-link" data-scroll-target="#生成-asv-表"><span class="header-section-number">1.6.2</span> 生成 ASV 表</a></li>
+  <li><a href="#选择目标长度的序列" id="toc-选择目标长度的序列" class="nav-link" data-scroll-target="#选择目标长度的序列"><span class="header-section-number">1.6.3</span> 选择目标长度的序列</a></li>
+  <li><a href="#去嵌合体" id="toc-去嵌合体" class="nav-link" data-scroll-target="#去嵌合体"><span class="header-section-number">1.6.4</span> 去嵌合体</a></li>
+  <li><a href="#测序数据处理情况追踪" id="toc-测序数据处理情况追踪" class="nav-link" data-scroll-target="#测序数据处理情况追踪"><span class="header-section-number">1.6.5</span> 测序数据处理情况追踪</a></li>
+  </ul></li>
+  <li><a href="#分配分类" id="toc-分配分类" class="nav-link" data-scroll-target="#分配分类"><span class="header-section-number">1.7</span> 分配分类</a>
+  <ul class="collapse">
+  <li><a href="#分类注释" id="toc-分类注释" class="nav-link" data-scroll-target="#分类注释"><span class="header-section-number">1.7.1</span> 分类注释</a></li>
+  </ul></li>
+  <li><a href="#保存结果" id="toc-保存结果" class="nav-link" data-scroll-target="#保存结果"><span class="header-section-number">1.8</span> 保存结果</a>
+  <ul class="collapse">
+  <li><a href="#保存-asv-序列" id="toc-保存-asv-序列" class="nav-link" data-scroll-target="#保存-asv-序列"><span class="header-section-number">1.8.1</span> 保存 ASV 序列</a></li>
+  <li><a href="#保存-asv-表和分类表" id="toc-保存-asv-表和分类表" class="nav-link" data-scroll-target="#保存-asv-表和分类表"><span class="header-section-number">1.8.2</span> 保存 ASV 表和分类表</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">测序数据预处理</span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="数据准备" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="数据准备"><span class="header-section-number">1.1</span> 数据准备</h2>
+<p>在开始分析之前，请确保已下载原始测序数据。</p>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+检查数据文件
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>以下代码将检查数据文件是否存在：</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查原始测序数据目录</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>PATH_SEQENCING_RAW <span class="ot">&lt;-</span> <span class="st">"data/amplicon/raw/"</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>data_exists <span class="ot">&lt;-</span> <span class="fu">dir.exists</span>(PATH_SEQENCING_RAW) <span class="sc">&amp;&amp;</span> <span class="fu">length</span>(<span class="fu">list.files</span>(PATH_SEQENCING_RAW, <span class="at">pattern =</span> <span class="st">"</span><span class="sc">\\</span><span class="st">.gz$"</span>)) <span class="sc">&gt;</span> <span class="dv">0</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>data_exists</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt; [1] TRUE</code></pre>
+</div>
+</div>
+<p>如果 <code>data_exists</code> 返回 <code>FALSE</code>，说明数据文件尚未下载。请按以下步骤获取数据：</p>
+<ol type="1">
+<li><p><strong>下载数据文件</strong>：</p>
+<ul>
+<li>地址：https://cloud.bio-spring.top/index.php/s/CZqYgzJWLczo2Rp</li>
+<li>备用：QQ 群文件 <code>lecture6-amplicon-rawdata.zip</code></li>
+</ul></li>
+<li><p><strong>解压到项目目录</strong>：</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">unzip</span> data.zip <span class="at">-d</span> /path/to/lecture6-r-microbiome-analysis/</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div></li>
+<li><p><strong>验证目录结构</strong>：</p>
+<pre><code>data/
+├── amplicon/
+│   └── raw/          # 原始测序 fastq 文件
+├── processed/        # 预处理后的数据（该文件随本仓库提供，不在压缩包中）
+└── silva/            # 参考数据库</code></pre></li>
+</ol>
+</div>
+</div>
+</section>
+<section id="分析概述" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="分析概述"><span class="header-section-number">1.2</span> 分析概述</h2>
+<p>采用 DADA2 对公司返回的数据进行分析注释。</p>
+</section>
+<section id="加载需要的包" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="加载需要的包"><span class="header-section-number">1.3</span> 加载需要的包</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dada2)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(cowplot)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stringr)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tibble)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="检查实验数据" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="检查实验数据"><span class="header-section-number">1.4</span> 检查实验数据</h2>
+<p>这些 fastq 文件是通过 2x250 Illumina Miseq 扩增子对 16S rRNA 基因的 V4 区进行测序生成的，这些样本来自实验。现在，只需将它们视为要处理的配对端 fastq 文件。</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 设置文件所在的路径</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>PATH_SEQENCING_RAW <span class="ot">&lt;-</span> <span class="st">"data/amplicon/raw/"</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 查找并排序 R1 和 R2 文件</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>fnFs <span class="ot">&lt;-</span> <span class="fu">sort</span>(<span class="fu">list.files</span>(PATH_SEQENCING_RAW, <span class="at">pattern=</span><span class="st">"_R1.f.*q.gz"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>fnRs <span class="ot">&lt;-</span> <span class="fu">sort</span>(<span class="fu">list.files</span>(PATH_SEQENCING_RAW, <span class="at">pattern=</span><span class="st">"_R2.f.*q.gz"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(fnFs, fnRs) <span class="sc">|&gt;</span> <span class="fu">basename</span>() <span class="sc">|&gt;</span> <span class="fu">sort</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt;  [1] "ZTPSN25UE442-Sep25LHK0_1_R1.fq.gz" "ZTPSN25UE442-Sep25LHK0_1_R2.fq.gz"
+#&gt;  [3] "ZTPSN25UE443-Sep25LHK0_2_R1.fq.gz" "ZTPSN25UE443-Sep25LHK0_2_R2.fq.gz"
+#&gt;  [5] "ZTPSN25UE444-Sep25LHK0_3_R1.fq.gz" "ZTPSN25UE444-Sep25LHK0_3_R2.fq.gz"
+#&gt;  [7] "ZTPSN25UE450-Sep25LHK1_1_R1.fq.gz" "ZTPSN25UE450-Sep25LHK1_1_R2.fq.gz"
+#&gt;  [9] "ZTPSN25UE451-Sep25LHK1_2_R1.fq.gz" "ZTPSN25UE451-Sep25LHK1_2_R2.fq.gz"
+#&gt; [11] "ZTPSN25UE452-Sep25LHK1_3_R1.fq.gz" "ZTPSN25UE452-Sep25LHK1_3_R2.fq.gz"</code></pre>
+</div>
+</div>
+<section id="生成-metadata" class="level3" data-number="1.4.1">
+<h3 data-number="1.4.1" class="anchored" data-anchor-id="生成-metadata"><span class="header-section-number">1.4.1</span> 生成 metadata</h3>
+<p>文件名包含 Sample ID，这里直接从 sample ID 获取实验处理。</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>sample.names <span class="ot">=</span> fnFs <span class="sc">|&gt;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">basename</span>() <span class="sc">|&gt;</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">str_extract</span>(<span class="st">"Sep25.*_[0-9]"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">str_remove</span>(<span class="st">"^Sep25"</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>meta <span class="ot">=</span> <span class="fu">tibble</span>(<span class="at">sample_id =</span> sample.names) <span class="sc">|&gt;</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    tidyr<span class="sc">::</span><span class="fu">separate</span>(sample_id, <span class="fu">c</span>(<span class="st">"treatment"</span>, <span class="st">"rep"</span>), <span class="at">sep =</span> <span class="st">"_"</span>, <span class="at">remove =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="查看文件的测序质量" class="level3" data-number="1.4.2">
+<h3 data-number="1.4.2" class="anchored" data-anchor-id="查看文件的测序质量"><span class="header-section-number">1.4.2</span> 查看文件的测序质量</h3>
+<p>测序质量的分布是一个重要的指标，通常我们会查看前 3 个样本的测序质量<a href="#fig-quality-profile" class="quarto-xref">图&nbsp;<span>1.1</span></a>。由图可知：</p>
+<ul>
+<li>R1 的测序治疗较 R2 差，R2 的测序质量平均值都在 30 以上，且没有明显的波动；</li>
+<li>在 225 bp 以后，序列的整体长度会有明显的下降。</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>p1 <span class="ot">=</span> <span class="fu">plotQualityProfile</span>(fnFs[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>]) <span class="sc">+</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span>file, <span class="at">ncol=</span><span class="dv">1</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>p2 <span class="ot">=</span> <span class="fu">plotQualityProfile</span>(fnRs[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>]) <span class="sc">+</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span>file, <span class="at">ncol=</span><span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylab</span>(<span class="st">""</span>)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_grid</span>(p1, p2, <span class="at">ncol=</span><span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-quality-profile" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-quality-profile-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="preprocess_files/figure-html/fig-quality-profile-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-quality-profile-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+图&nbsp;1.1: 前3个的测序质量
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>测序质量得分在每个位置的分布以灰度热图显示，其中深色对应更高的频率。绘制的线条显示位置统计数据：绿色为平均值，橙色为中位数，虚线橙色为第25和第75百分位数。如果序列长度不同，将绘制一条红线，显示至少延伸到该位置的读数百分比。</p>
+</section>
+</section>
+<section id="过滤和修剪" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="过滤和修剪"><span class="header-section-number">1.5</span> 过滤和修剪</h2>
+<section id="设置过滤文件的产生路径和名称" class="level3" data-number="1.5.1">
+<h3 data-number="1.5.1" class="anchored" data-anchor-id="设置过滤文件的产生路径和名称"><span class="header-section-number">1.5.1</span> 设置过滤文件的产生路径和名称</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Place filtered files in filtered/ subdirectory</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>filtFs <span class="ot">&lt;-</span> <span class="fu">file.path</span>(PATH_SEQENCING_RAW, <span class="st">"filtered"</span>, <span class="fu">paste0</span>(sample.names, <span class="st">"_F_filt.fq.gz"</span>))</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>filtRs <span class="ot">&lt;-</span> <span class="fu">file.path</span>(PATH_SEQENCING_RAW, <span class="st">"filtered"</span>, <span class="fu">paste0</span>(sample.names, <span class="st">"_R_filt.fq.gz"</span>))</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(filtFs) <span class="ot">&lt;-</span> sample.names</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(filtRs) <span class="ot">&lt;-</span> sample.names</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="对原始数据进行过滤" class="level3" data-number="1.5.2">
+<h3 data-number="1.5.2" class="anchored" data-anchor-id="对原始数据进行过滤"><span class="header-section-number">1.5.2</span> 对原始数据进行过滤</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>out <span class="ot">&lt;-</span> <span class="fu">filterAndTrim</span>(fnFs, filtFs, fnRs, filtRs, </span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>              <span class="at">maxN =</span> <span class="dv">0</span>, <span class="at">maxEE =</span> <span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">4</span>), <span class="at">truncQ =</span> <span class="dv">0</span>, </span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>              <span class="at">rm.phix =</span> <span class="cn">FALSE</span>, </span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>              <span class="at">truncLen =</span> <span class="fu">c</span>(<span class="dv">200</span>,<span class="dv">200</span>),</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>              <span class="at">compress =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>              <span class="at">multithread =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(out)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt;                                   reads.in reads.out
+#&gt; ZTPSN25UE442-Sep25LHK0_1_R1.fq.gz   139152    134592
+#&gt; ZTPSN25UE443-Sep25LHK0_2_R1.fq.gz   149434    144540
+#&gt; ZTPSN25UE444-Sep25LHK0_3_R1.fq.gz   140180    134535
+#&gt; ZTPSN25UE450-Sep25LHK1_1_R1.fq.gz   128633    124752
+#&gt; ZTPSN25UE451-Sep25LHK1_2_R1.fq.gz   133500    128168
+#&gt; ZTPSN25UE452-Sep25LHK1_3_R1.fq.gz   143316    137417</code></pre>
+</div>
+</div>
+</section>
+<section id="估计测序错误率" class="level3" data-number="1.5.3">
+<h3 data-number="1.5.3" class="anchored" data-anchor-id="估计测序错误率"><span class="header-section-number">1.5.3</span> 估计测序错误率</h3>
+<p>在 DADA2 中，<code>learnErrors</code> 是整个流程的关键步骤之一，其目的是<strong>学习测序错误模型</strong>，这是 DADA2 高精度去噪能力的基础。</p>
+<p>高通量测序（如 Illumina）在读取 DNA 序列时会出现错误，比如碱基错配（substitution）。DADA2 的目标是区分这些<strong>测序错误</strong>与真实的<strong>生物变异</strong>（例如不同的细菌或物种）。</p>
+<p>为了做到这一点，DADA2 需要知道测序错误是如何分布的，例如：</p>
+<ul>
+<li>一个“A”被错误读成“T”的概率有多大？</li>
+<li>在不同的测序质量分数下，错误概率如何变化？</li>
+</ul>
+<p><code>learnErrors(filtFs)</code> 会根据过滤后的序列数据（如 <code>filtFs</code>）统计这些碱基替换的发生频率，结合质量分数，<strong>拟合出一个错误率矩阵</strong>（error rate matrix），这个矩阵是后续 <strong>序列去噪（denoising）</strong> 的基础。</p>
+<p>只有有了这个模型，DADA2 才能：</p>
+<ol type="1">
+<li>判断某条序列的观察频次是否能用测序错误解释；</li>
+<li>决定是否要把这条序列当作真实变体（ASV）保留下来。</li>
+</ol>
+<p>对同一台机器、同一批次的样本，可以用一个共享的错误模型。如果你有很多样本，也可以选择只在一部分样本中学习错误，再应用到其他样本中。</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 学习正向和反向的错误模型</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>errF <span class="ot">&lt;-</span> <span class="fu">learnErrors</span>(filtFs, <span class="at">multithread =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt; 107683800 total bases in 538419 reads from 4 samples will be used for learning the error rates.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>errR <span class="ot">&lt;-</span> <span class="fu">learnErrors</span>(filtRs, <span class="at">multithread =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt; 107683800 total bases in 538419 reads from 4 samples will be used for learning the error rates.</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plotErrors</span>(errF, <span class="at">nominalQ =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="fig-error-model-forward" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-error-model-forward-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div id="fig-error-model-forward" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-subfloat-fig figure">
+<div aria-describedby="fig-error-model-forward-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="preprocess_files/figure-html/fig-error-model-forward-1.png" class="img-fluid figure-img" data-ref-parent="fig-error-model-forward" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-subfloat-caption quarto-subfloat-fig" id="fig-error-model-forward-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+(a) 红色线是理论上的错误率，黑色点是观测错误率，黑色线是拟合（估计）的错误率
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-error-model-forward-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+图&nbsp;1.2: 正向错误模型
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plotErrors</span>(errR, <span class="at">nominalQ =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-error-model-reverse" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-error-model-reverse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="preprocess_files/figure-html/fig-error-model-reverse-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-error-model-reverse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+图&nbsp;1.3: 反向错误模型
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="序列去重" class="level3" data-number="1.5.4">
+<h3 data-number="1.5.4" class="anchored" data-anchor-id="序列去重"><span class="header-section-number">1.5.4</span> 序列去重</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 去除重复序列</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 仅仅保留重复序列中的一条序列，以在后续序列处理中节省计算资源</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>derepFs <span class="ot">&lt;-</span> <span class="fu">derepFastq</span>(filtFs)</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>derepRs <span class="ot">&lt;-</span> <span class="fu">derepFastq</span>(filtRs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="根据模型进行匹配" class="level3" data-number="1.5.5">
+<h3 data-number="1.5.5" class="anchored" data-anchor-id="根据模型进行匹配"><span class="header-section-number">1.5.5</span> 根据模型进行匹配</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>dadaFs <span class="ot">&lt;-</span> <span class="fu">dada</span>(filtFs, <span class="at">err=</span>errF, <span class="at">multithread =</span> <span class="cn">TRUE</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>dadaRs <span class="ot">&lt;-</span> <span class="fu">dada</span>(filtRs, <span class="at">err=</span>errR, <span class="at">multithread =</span> <span class="cn">TRUE</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>dadaFs[[<span class="dv">1</span>]]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt; dada-class: object describing DADA2 denoising results
+#&gt; 1838 sequence variants were inferred from 45002 input unique sequences.
+#&gt; Key parameters: OMEGA_A = 1e-40, OMEGA_C = 1e-40, BAND_SIZE = 16</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="asv-表" class="level2" data-number="1.6">
+<h2 data-number="1.6" class="anchored" data-anchor-id="asv-表"><span class="header-section-number">1.6</span> ASV 表</h2>
+<section id="序列拼接" class="level3" data-number="1.6.1">
+<h3 data-number="1.6.1" class="anchored" data-anchor-id="序列拼接"><span class="header-section-number">1.6.1</span> 序列拼接</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>mergers2 <span class="ot">&lt;-</span> <span class="fu">mergePairs</span>(dadaFs, derepFs, dadaRs, derepRs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>下面，查看合并后的结果。</p>
+<ul>
+<li><code>$abundance</code>：对应这个正向/反向序列组合的读数数量。</li>
+<li><code>$sequence</code>：合并后的序列。</li>
+<li><code>$forward</code>：正向去噪序列的索引。</li>
+<li><code>$reverse</code>：反向去噪序列的索引。</li>
+<li><code>$nmatch</code>：重叠区域中匹配的核苷酸数量。</li>
+<li><code>$nmismatch</code>：重叠区域中不匹配的核苷酸数量。</li>
+<li><code>$nindel</code>：重叠区域中的插入/缺失数量。</li>
+<li><code>$prefer</code>：用于重叠区域的序列来源。1=正向；2=反向。</li>
+<li><code>$accept</code>：如果正向和反向去噪序列之间的重叠至少为minOverlap且最多有maxMismatch差异，则为TRUE。否则为FALSE。</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 查看合并后的序列</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(mergers2[[<span class="dv">1</span>]]) <span class="sc">|&gt;</span> <span class="fu">as_tibble</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt; # A tibble: 6 × 9
+#&gt;   sequence       abundance forward reverse nmatch nmismatch nindel prefer accept
+#&gt;   &lt;chr&gt;              &lt;int&gt;   &lt;int&gt;   &lt;int&gt;  &lt;int&gt;     &lt;int&gt;  &lt;int&gt;  &lt;dbl&gt; &lt;lgl&gt; 
+#&gt; 1 GTGTCAGCCGCCG…       159     252     434    108         0      0      1 TRUE  
+#&gt; 2 GTGTCAGCAGCCG…       142       1       1    108         0      0      1 TRUE  
+#&gt; 3 GTGTCAGCAGCCG…       125     469    1046    108         0      0      1 TRUE  
+#&gt; 4 GTGTCAGCCGCCG…       121       2       1    108         0      0      1 TRUE  
+#&gt; 5 GTGCCAGCAGCCG…       113       3       1    108         0      0      1 TRUE  
+#&gt; 6 GTGCCAGCCGCCG…       108       4       1    108         0      0      1 TRUE</code></pre>
+</div>
+</div>
+</section>
+<section id="生成-asv-表" class="level3" data-number="1.6.2">
+<h3 data-number="1.6.2" class="anchored" data-anchor-id="生成-asv-表"><span class="header-section-number">1.6.2</span> 生成 ASV 表</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 生成 ASV 表</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>seqtab <span class="ot">&lt;-</span> <span class="fu">makeSequenceTable</span>(mergers2)</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(seqtab)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt; [1]     6 22183</code></pre>
+</div>
+</div>
+</section>
+<section id="选择目标长度的序列" class="level3" data-number="1.6.3">
+<h3 data-number="1.6.3" class="anchored" data-anchor-id="选择目标长度的序列"><span class="header-section-number">1.6.3</span> 选择目标长度的序列</h3>
+<p><strong>515F 和 806R</strong> 理论上扩增区域 <strong>约 253 bp</strong>（不含引物序列）或者 <strong>293 bp</strong>（含引物序列）。</p>
+<ul>
+<li>515F：GTGYCAGCMGCCGCGGTAA</li>
+<li>806R：GGACTACNVGGGTWTCTAAT</li>
+</ul>
+<p>使用 515F–806R 进行 16S V4 区扩增，拼接后得到的序列是完全正常、符合设计预期的<a href="#fig-seq-length-distribution" class="quarto-xref">图&nbsp;<span>1.4</span></a>。</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 查看序列长度分布</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(<span class="fu">nchar</span>(<span class="fu">getSequences</span>(seqtab))) <span class="sc">|&gt;</span> <span class="fu">plot</span>(<span class="at">type =</span> <span class="st">'l'</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-seq-length-distribution" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-seq-length-distribution-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="preprocess_files/figure-html/fig-seq-length-distribution-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-seq-length-distribution-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+图&nbsp;1.4: 拼接后 ASV 序列的长度分布
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 筛选目标长度的序列</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>seqtab2 <span class="ot">&lt;-</span> seqtab[, <span class="fu">nchar</span>(<span class="fu">getSequences</span>(seqtab)) <span class="sc">%in%</span> <span class="dv">290</span><span class="sc">:</span><span class="dv">295</span>]</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="co"># 检查筛选后的维度</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(seqtab2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt; [1]     6 21083</code></pre>
+</div>
+</div>
+</section>
+<section id="去嵌合体" class="level3" data-number="1.6.4">
+<h3 data-number="1.6.4" class="anchored" data-anchor-id="去嵌合体"><span class="header-section-number">1.6.4</span> 去嵌合体</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 去除嵌合体</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>seqtab.nochim <span class="ot">&lt;-</span> <span class="fu">removeBimeraDenovo</span>(seqtab2, <span class="at">method=</span><span class="st">"pooled"</span>, <span class="at">multithread=</span>F, <span class="at">verbose=</span><span class="cn">TRUE</span>)</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 统计去除嵌合体后的 ASV 数量</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(seqtab.nochim)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt; [1]    6 7125</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 统计去除嵌合体前后的 ASV 数量占比</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(seqtab.nochim)<span class="sc">/</span><span class="fu">sum</span>(seqtab)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt; [1] 0.5474293</code></pre>
+</div>
+</div>
+</section>
+<section id="测序数据处理情况追踪" class="level3" data-number="1.6.5">
+<h3 data-number="1.6.5" class="anchored" data-anchor-id="测序数据处理情况追踪"><span class="header-section-number">1.6.5</span> 测序数据处理情况追踪</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 求和函数</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>getN <span class="ot">&lt;-</span> <span class="cf">function</span>(x) <span class="fu">sum</span>(<span class="fu">getUniques</span>(x))</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 合并各样本分步数据量</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>track <span class="ot">&lt;-</span> <span class="fu">cbind</span>(out, <span class="fu">sapply</span>(dadaFs, getN), <span class="fu">sapply</span>(dadaRs, getN), <span class="fu">sapply</span>(mergers2, getN), <span class="fu">rowSums</span>(seqtab.nochim))</span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a><span class="co"># If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)</span></span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 修改列名</span></span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(track) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"input"</span>, <span class="st">"filtered"</span>, <span class="st">"denoisedF"</span>, <span class="st">"denoisedR"</span>, <span class="st">"merged"</span>, <span class="st">"nonchim"</span>)</span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 行名修改为样本名</span></span>
+<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a><span class="fu">rownames</span>(track) <span class="ot">&lt;-</span> sample.names</span>
+<span id="cb35-11"><a href="#cb35-11" aria-hidden="true" tabindex="-1"></a><span class="co"># 统计结果预览</span></span>
+<span id="cb35-12"><a href="#cb35-12" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(track)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt;         input filtered denoisedF denoisedR merged nonchim
+#&gt; LHK0_1 139152   134592    129009    126126  97182   54164
+#&gt; LHK0_2 149434   144540    137150    133207  98621   66147
+#&gt; LHK0_3 140180   134535    129277    126297 100141   54221
+#&gt; LHK1_1 128633   124752    121857    120977 108376   56047
+#&gt; LHK1_2 133500   128168    124265    121607 100480   51746
+#&gt; LHK1_3 143316   137417    132756    131321 107880   53074</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="分配分类" class="level2" data-number="1.7">
+<h2 data-number="1.7" class="anchored" data-anchor-id="分配分类"><span class="header-section-number">1.7</span> 分配分类</h2>
+<section id="分类注释" class="level3" data-number="1.7.1">
+<h3 data-number="1.7.1" class="anchored" data-anchor-id="分类注释"><span class="header-section-number">1.7.1</span> 分类注释</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>SILVA_DB_FILE <span class="ot">=</span> <span class="st">"data/silva/silva_nr99_v138.2_wSpecies_train_set.fa.gz"</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a><span class="co"># 分配到属级别</span></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>taxa <span class="ot">&lt;-</span> <span class="fu">assignTaxonomy</span>(seqtab.nochim, SILVA_DB_FILE, <span class="at">multithread =</span> <span class="cn">TRUE</span>, <span class="at">minBoot =</span> <span class="dv">60</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 打印结果</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>taxa <span class="sc">|&gt;</span> <span class="fu">as_tibble</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>#&gt; # A tibble: 7,125 × 7
+#&gt;    Kingdom  Phylum          Class          Order            Family Genus Species
+#&gt;    &lt;chr&gt;    &lt;chr&gt;           &lt;chr&gt;          &lt;chr&gt;            &lt;chr&gt;  &lt;chr&gt; &lt;chr&gt;  
+#&gt;  1 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   
+#&gt;  2 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   
+#&gt;  3 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   
+#&gt;  4 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   
+#&gt;  5 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   
+#&gt;  6 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   
+#&gt;  7 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   
+#&gt;  8 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   
+#&gt;  9 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   
+#&gt; 10 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   
+#&gt; # ℹ 7,115 more rows</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="保存结果" class="level2" data-number="1.8">
+<h2 data-number="1.8" class="anchored" data-anchor-id="保存结果"><span class="header-section-number">1.8</span> 保存结果</h2>
+<section id="保存-asv-序列" class="level3" data-number="1.8.1">
+<h3 data-number="1.8.1" class="anchored" data-anchor-id="保存-asv-序列"><span class="header-section-number">1.8.1</span> 保存 ASV 序列</h3>
+<p>将 ASV 序列保存为 FASTA 格式，以便后续使用。</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>asv_sequence <span class="ot">&lt;-</span> <span class="fu">getSequences</span>(seqtab.nochim)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>为序列指定唯一 ID。</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(digest)</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>get_dna_id <span class="ot">=</span> <span class="cf">function</span>(seq, <span class="at">length =</span> <span class="dv">12</span>){</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>    hash <span class="ot">=</span> <span class="fu">digest</span>(seq, <span class="at">algo =</span> <span class="st">"sha256"</span>, <span class="at">serialize =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">substr</span>(hash, <span class="dv">1</span>, length)</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 生成 ASV ID</span></span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>asv_id <span class="ot">=</span> <span class="fu">paste0</span>(<span class="st">"ASV"</span>, <span class="fu">sapply</span>(asv_sequence, get_dna_id))</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 将数据框转换为 FASTA 格式</span></span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>asv_fasta <span class="ot">=</span> <span class="fu">paste0</span>(<span class="st">"&gt;"</span>, asv_id, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>, asv_sequence)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 保存为 FASTA 文件</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a><span class="fu">writeLines</span>(asv_fasta, <span class="st">"data/amplicon/sep25-asv.fasta"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="保存-asv-表和分类表" class="level3" data-number="1.8.2">
+<h3 data-number="1.8.2" class="anchored" data-anchor-id="保存-asv-表和分类表"><span class="header-section-number">1.8.2</span> 保存 ASV 表和分类表</h3>
+<p>将 <code>seqtab.nochim</code> 和 <code>taxa</code> 保存为 CSV 文件，便于后续分析和共享。</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ASV表格导出</span></span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 这里的 seqtab.nochim 是一个数值矩阵，行名是样本名称，列名是 ASV 序列</span></span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(seqtab.nochim) <span class="ot">&lt;-</span> asv_id</span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(seqtab.nochim, <span class="st">"data/amplicon/sep25-asvtab.csv"</span>)</span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 分类表格导出</span></span>
+<span id="cb44-7"><a href="#cb44-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 这里的 taxa 是一个文本矩阵，行名是 ASV 序列，列名是分类学层级</span></span>
+<span id="cb44-8"><a href="#cb44-8" aria-hidden="true" tabindex="-1"></a><span class="fu">rownames</span>(taxa) <span class="ot">&lt;-</span> asv_id</span>
+<span id="cb44-9"><a href="#cb44-9" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(taxa, <span class="st">"data/amplicon/sep25-taxtab.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./index.html" class="pagination-link" aria-label="前言">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">前言</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./taxonomy.html" class="pagination-link" aria-label="群落结构分析">
+        <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">群落结构分析</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<script>
+/* quarto-ai-helper.js */
+(function () {
+  // ── i18n 多语言支持（根据浏览器/系统语言自动切换）──────────────────────
+  var lang = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+  var isChinese = lang.startsWith("zh");
+
+  var i18n = {
+    zh: {
+      askChatGPT: "🤖 问问 ChatGPT",
+      copyPrompt: "📋 复制提问到其它大模型",
+      copied: "✅ 已复制到剪贴板",
+      errorLabel: "⚠️ 代码运行出错",
+      chatTooltip: "将源代码和报错信息发送给 ChatGPT，获取修复建议",
+      copyTooltip: "复制格式化的提问内容到剪贴板，方便粘贴到其它大模型",
+      promptTemplate: function (source, error, language) {
+        return "我在 Quarto 文档中运行 " + language + " 代码时遇到了报错，请帮我分析原因并修复代码。\n\n" +
+          "## 源代码\n\n" +
+          "```" + language.toLowerCase() + "\n" + source + "\n```\n\n" +
+          "## 报错信息\n\n" +
+          "```\n" + error + "\n```\n\n" +
+          "请用 Markdown 格式回答，解释原因并给出修复后的代码。";
+      },
+      noSource: "（无法获取源代码）"
+    },
+    en: {
+      askChatGPT: "🤖 Ask ChatGPT",
+      copyPrompt: "📋 Copy prompt for other AI",
+      copied: "✅ Copied to clipboard",
+      errorLabel: "⚠️ Code Error",
+      chatTooltip: "Send the source code and error message to ChatGPT for a fix",
+      copyTooltip: "Copy a formatted prompt to clipboard for use with other AI models",
+      promptTemplate: function (source, error, language) {
+        return "I encountered an error while running " + language + " code in a Quarto document. " +
+          "Please help me diagnose the issue and fix the code.\n\n" +
+          "## Source Code\n\n" +
+          "```" + language.toLowerCase() + "\n" + source + "\n```\n\n" +
+          "## Error Message\n\n" +
+          "```\n" + error + "\n```\n\n" +
+          "Please respond in Markdown format with a brief explanation and the fixed code.";
+      },
+      noSource: "(Source code not available)"
+    }
+  };
+
+  var t = isChinese ? i18n.zh : i18n.en;
+
+  // ── 辅助函数：检测代码语言 ─────────────────────────────────────────────
+  function detectLanguage(sourceCodeBlock) {
+    if (!sourceCodeBlock) return "R";
+    var classList = sourceCodeBlock.className || "";
+    if (classList.indexOf("python") !== -1) return "Python";
+    if (classList.indexOf("julia") !== -1) return "Julia";
+    if (classList.indexOf("bash") !== -1) return "Bash";
+    if (classList.indexOf("js") !== -1 || classList.indexOf("javascript") !== -1) return "JavaScript";
+    return "R";
+  }
+
+  // ── 辅助函数：获取完整的源代码 ────────────────────────────────────────
+  function getSourceCode(parentCell) {
+    if (!parentCell) return null;
+    var codeBlocks = parentCell.querySelectorAll("pre.sourceCode");
+    if (codeBlocks.length === 0) return null;
+    var parts = [];
+    for (var i = 0; i < codeBlocks.length; i++) {
+      var code = codeBlocks[i].innerText.trim();
+      if (code) parts.push(code);
+    }
+    return parts.length > 0 ? parts.join("\n\n") : null;
+  }
+
+  // ── 主逻辑 ──────────────────────────────────────────────────────────────
+  function initAIHelper() {
+    var errorBlocks = document.querySelectorAll(".cell-output-error");
+
+    errorBlocks.forEach(function (block) {
+      // 避免重复添加
+      if (block.classList.contains("ai-helper-styled")) return;
+
+      // 找到所属 cell
+      var parentCell = block.closest(".cell");
+
+      // 获取源代码块（用于检测语言）
+      var firstSourceBlock = parentCell
+        ? parentCell.querySelector("pre.sourceCode")
+        : null;
+
+      // 检测编程语言
+      var language = detectLanguage(firstSourceBlock);
+
+      // 先保存原始错误文本（在修改 DOM 之前）
+      var originalErrorText = block.innerText.trim();
+
+      // ── 给错误块添加样式类 ────────────────────────────────────────────
+      block.classList.add("ai-helper-styled");
+
+      // ── 在错误信息顶部添加标签 ────────────────────────────────────────
+      var label = document.createElement("div");
+      label.className = "ai-helper-error-label";
+      label.textContent = t.errorLabel;
+      block.insertBefore(label, block.firstChild);
+
+      // 构造发送给大模型的完整 prompt
+      var getFullPrompt = function () {
+        var sourceCode = getSourceCode(parentCell) || t.noSource;
+        return t.promptTemplate(sourceCode, originalErrorText, language);
+      };
+
+      // ── 按钮容器（放在错误块内部底部）─────────────────────────────────
+      var container = document.createElement("div");
+      container.className = "quarto-ai-helper-buttons";
+
+      // ── ChatGPT 按钮 ─────────────────────────────────────────────────────
+      var chatBtn = document.createElement("button");
+      chatBtn.innerText = t.askChatGPT;
+      chatBtn.className = "btn btn-success btn-sm";
+      chatBtn.title = t.chatTooltip;
+      chatBtn.onclick = function () {
+        var prompt = getFullPrompt();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(prompt).catch(function () {});
+        }
+        window.open(
+          "https://chatgpt.com/?q=" + encodeURIComponent(prompt),
+          "_blank"
+        );
+      };
+
+      // ── 复制按钮 ─────────────────────────────────────────────────────────
+      var copyBtn = document.createElement("button");
+      copyBtn.innerText = t.copyPrompt;
+      copyBtn.className = "btn btn-outline-secondary btn-sm";
+      copyBtn.title = t.copyTooltip;
+      copyBtn.onclick = function () {
+        var prompt = getFullPrompt();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(prompt).then(function () {
+            copyBtn.innerText = t.copied;
+          });
+        } else {
+          var ta = document.createElement("textarea");
+          ta.value = prompt;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          try {
+            document.execCommand("copy");
+            copyBtn.innerText = t.copied;
+          } catch (e) {}
+          document.body.removeChild(ta);
+        }
+      };
+
+      container.appendChild(chatBtn);
+      container.appendChild(copyBtn);
+
+      // 按钮放在错误块内部底部
+      block.appendChild(container);
+    });
+  }
+
+  // ── 确保 DOM 已就绪后执行 ────────────────────────────────────────────────
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAIHelper);
+  } else {
+    initAIHelper();
+  }
+})();
+
+</script>
+
+
+
+
+</body></html>

@@ -1,0 +1,612 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Lecture 6: Microbiome Analysis with R",
+    "section": "",
+    "text": "前言\n欢迎来到《数据驱动的可重复性研究》课程第六讲：使用 R 语言进行微生物组数据分析。本讲将系统介绍微生物组数据分析的原理、方法和实践操作，帮助您掌握从原始测序数据到生物学解释的完整分析流程。",
+    "crumbs": [
+      "前言"
+    ]
+  },
+  {
+    "objectID": "index.html#微生物组研究概述",
+    "href": "index.html#微生物组研究概述",
+    "title": "Lecture 6: Microbiome Analysis with R",
+    "section": "微生物组研究概述",
+    "text": "微生物组研究概述\n微生物组（Microbiome）是指特定环境中所有微生物及其遗传物质的总和，包括细菌、古菌、真菌、病毒等。随着高通量测序技术的发展，16S rRNA 基因扩增子测序已成为研究微生物群落组成和多样性的主流方法。通过分析微生物组数据，我们可以：\n\n揭示群落组成：了解样本中存在的微生物种类及其相对丰度\n评估群落多样性：从 Alpha 多样性（样本内）和 Beta 多样性（样本间）两个维度刻画群落特征\n识别生物标志物：发现与特定环境条件或宿主状态相关的关键微生物类群\n解析共现网络：构建微生物间的相互作用网络，推断生态关系",
+    "crumbs": [
+      "前言"
+    ]
+  },
+  {
+    "objectID": "index.html#分析流程概览",
+    "href": "index.html#分析流程概览",
+    "title": "Lecture 6: Microbiome Analysis with R",
+    "section": "分析流程概览",
+    "text": "分析流程概览\n本讲涵盖微生物组数据分析的完整流程。下图展示了 microeco 包的整体分析框架：\n\n\n\n\n\n\n\n\n图 1: microeco 包的分析框架\n\n\n\n\n\n\n本讲内容组织\n\n测序数据预处理（第一章）：使用 DADA2 对原始测序数据进行质量控制、去噪和 ASV（Amplicon Sequence Variants）推断\n构建 microtable 对象（第二章）：将数据整理为 microeco 包所需的格式，建立标准化分析基础\n群落结构分析（第三章）：可视化物种组成，了解群落的基本特征\nAlpha 多样性分析（第四章）：评估样本内的物种丰富度和多样性\nBeta 多样性分析（第五章）：比较不同样本间的群落差异\n差异分析（第六章）：鉴定在不同处理组间显著差异的微生物类群\n网络分析（第七章）：构建微生物共现网络，解析物种间的相互作用",
+    "crumbs": [
+      "前言"
+    ]
+  },
+  {
+    "objectID": "index.html#示例数据说明",
+    "href": "index.html#示例数据说明",
+    "title": "Lecture 6: Microbiome Analysis with R",
+    "section": "示例数据说明",
+    "text": "示例数据说明\n本讲使用一组土壤微生物组数据作为示例。该数据来自栗河（LiHe）地区的土壤样本，包含三种不同处理组（ZY0、ZY0.5、ZY1），每组 4 个生物学重复，共计 12 个样本。测序 targeting 16S rRNA 基因的 V4 区，使用 Illumina MiSeq 平台进行双端测序（2×250 bp）。同时，我们还收集了每个样本的环境因子数据，包括 pH、电导率（EC）、总有机碳（TOC）和总有机质（TOM）。",
+    "crumbs": [
+      "前言"
+    ]
+  },
+  {
+    "objectID": "index.html#软件环境",
+    "href": "index.html#软件环境",
+    "title": "Lecture 6: Microbiome Analysis with R",
+    "section": "软件环境",
+    "text": "软件环境\n本讲主要使用以下 R 包进行数据分析：\n\ndada2：用于原始测序数据的预处理和质量控制\nmicroeco：用于微生物组数据的全面分析和可视化\ntidyverse：用于数据整理和可视化\n\n请确保在运行本讲代码前已安装并加载了这些包。同时，本讲使用 renv 包管理 R 环境依赖，以确保分析的可重复性。",
+    "crumbs": [
+      "前言"
+    ]
+  },
+  {
+    "objectID": "index.html#核心概念速览",
+    "href": "index.html#核心概念速览",
+    "title": "Lecture 6: Microbiome Analysis with R",
+    "section": "核心概念速览",
+    "text": "核心概念速览\n在开始之前，让我们快速了解本讲涉及的几个核心概念：\n\nASV 与 OTU\n\nASV (Amplicon Sequence Variants，扩增子序列变体)：基于精确序列差异（单核苷酸分辨率）定义的微生物单元。DADA2 等工具通过错误率校正将相似序列聚合成 ASV，能够区分仅相差一个碱基的序列。\nOTU (Operational Taxonomic Unit，操作分类单元)：传统的聚类方法，通常基于 97% 序列相似度将序列分组。OTU 可能掩盖真实的生物学变异。\n\n为何选择 ASV？ ASV 提供了更高的分辨率，能够检测细微的序列差异，且结果在不同研究间更具可比性（ASV 是”精确的标签”，而非依赖于特定聚类阈值）。\n\n\nmicrotable 对象\nmicrotable 是 microeco 包的核心数据结构，类似于 phyloseq 包的 phyloseq 对象。它将微生物组分析的三大核心数据表整合在一起：\n\nOTU/ASV 表：特征（微生物）× 样本的丰度矩阵\n样本表：样本的元数据（分组、环境因子等）\n分类表：特征的分类学注释（界/门/纲/目/科/属/种）\n\n构建 microtable 对象是所有后续分析的基础，本书将在第二章详细讲解其构建方法。\n\n\n组成性效应 (Compositional Effect)\n微生物组数据是组成性数据——每个样本的序列总数（测序深度）是固定的，因此一个分类群的相对丰度增加必然意味着其他分类群的相对丰度减少。这会导致”虚假相关”现象：\n\n两个分类群可能在统计上负相关，但这只是因为第三个分类群丰度增加\n差异分析时需要特别注意，某分类群的”富集”可能是绝对丰度增加，也可能只是其他分类群减少\n\n本书将在差异分析和网络分析章节讨论如何缓解组成性效应的影响。",
+    "crumbs": [
+      "前言"
+    ]
+  },
+  {
+    "objectID": "index.html#使用说明",
+    "href": "index.html#使用说明",
+    "title": "Lecture 6: Microbiome Analysis with R",
+    "section": "使用说明",
+    "text": "使用说明\n本书中的所有代码均可直接在 R 环境中运行。建议读者在阅读时同步执行代码，以加深理解。\n\n\n\n\n\n\n环境准备\n\n\n\n从课程仓库下载本课程的源代码：\ngit clone git@github.com:D2RS-2026spring/lecture6-r-microbiome-analysis.git\n在开始学习之前，请确保你的 R 版本 ≥ 4.1.0，并已安装以下软件包：\ncat(paste0(\"本次使用的 R 版本：\", R.version.string))\n本次使用的 R 版本：R version 4.5.2 (2025-10-31)\ninstall.packages(\"pak\")  # 推荐使用 pak 包安装\npak::pak(c(\"tidyverse\", \"microeco\", \"dada2\", \"ggplot2\",\n           \"cowplot\", \"pheatmap\", \"vegan\", \"randomForest\"))\n如果你了解 renv，还可以一键创建一个可重复的本地分析环境。\nrenv::restore()\n然后在终端运行 quarto render --to html 编译全书内容1。",
+    "crumbs": [
+      "前言"
+    ]
+  },
+  {
+    "objectID": "index.html#学习建议",
+    "href": "index.html#学习建议",
+    "title": "Lecture 6: Microbiome Analysis with R",
+    "section": "学习建议",
+    "text": "学习建议\n\n每个章节都按照”概述-流程-实现-结果”的结构组织，建议按顺序阅读\n代码块可以直接运行，但也鼓励您根据实际数据进行调整\n理解分析背后的生物学意义比单纯运行代码更重要\n注意记录分析过程中的参数设置和关键决策，以保证研究的可重复性\n\n希望本讲能帮助您建立系统的微生物组数据分析思维，祝学习愉快！",
+    "crumbs": [
+      "前言"
+    ]
+  },
+  {
+    "objectID": "index.html#footnotes",
+    "href": "index.html#footnotes",
+    "title": "Lecture 6: Microbiome Analysis with R",
+    "section": "",
+    "text": "本项目推荐使用 Positron 作为开发环境。用 Positron 打开本项目后，renv 会自动识别并恢复依赖环境，Quarto 文档也可以直接预览和渲染。如果运行 quarto render 将同时生成 HTML 和 PDF。因 PDF 渲染配置容易出问题，所以如果出错，推荐先生成 HTML 文档。↩︎",
+    "crumbs": [
+      "前言"
+    ]
+  },
+  {
+    "objectID": "preprocess.html",
+    "href": "preprocess.html",
+    "title": "1  测序数据预处理",
+    "section": "",
+    "text": "1.1 数据准备\n在开始分析之前，请确保已下载原始测序数据。",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>测序数据预处理</span>"
+    ]
+  },
+  {
+    "objectID": "preprocess.html#数据准备",
+    "href": "preprocess.html#数据准备",
+    "title": "1  测序数据预处理",
+    "section": "",
+    "text": "检查数据文件\n\n\n\n以下代码将检查数据文件是否存在：\n\n# 检查原始测序数据目录\nPATH_SEQENCING_RAW &lt;- \"data/amplicon/raw/\"\ndata_exists &lt;- dir.exists(PATH_SEQENCING_RAW) && length(list.files(PATH_SEQENCING_RAW, pattern = \"\\\\.gz$\")) &gt; 0\n\ndata_exists\n\n#&gt; [1] TRUE\n\n\n如果 data_exists 返回 FALSE，说明数据文件尚未下载。请按以下步骤获取数据：\n\n下载数据文件：\n\n地址：https://cloud.bio-spring.top/index.php/s/CZqYgzJWLczo2Rp\n备用：QQ 群文件 lecture6-amplicon-rawdata.zip\n\n解压到项目目录：\nunzip data.zip -d /path/to/lecture6-r-microbiome-analysis/\n验证目录结构：\ndata/\n├── amplicon/\n│   └── raw/          # 原始测序 fastq 文件\n├── processed/        # 预处理后的数据（该文件随本仓库提供，不在压缩包中）\n└── silva/            # 参考数据库",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>测序数据预处理</span>"
+    ]
+  },
+  {
+    "objectID": "preprocess.html#分析概述",
+    "href": "preprocess.html#分析概述",
+    "title": "1  测序数据预处理",
+    "section": "1.2 分析概述",
+    "text": "1.2 分析概述\n采用 DADA2 对公司返回的数据进行分析注释。",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>测序数据预处理</span>"
+    ]
+  },
+  {
+    "objectID": "preprocess.html#加载需要的包",
+    "href": "preprocess.html#加载需要的包",
+    "title": "1  测序数据预处理",
+    "section": "1.3 加载需要的包",
+    "text": "1.3 加载需要的包\n\nlibrary(dada2)\nlibrary(ggplot2)\nlibrary(cowplot)\nlibrary(dplyr)\nlibrary(stringr)\nlibrary(tibble)",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>测序数据预处理</span>"
+    ]
+  },
+  {
+    "objectID": "preprocess.html#检查实验数据",
+    "href": "preprocess.html#检查实验数据",
+    "title": "1  测序数据预处理",
+    "section": "1.4 检查实验数据",
+    "text": "1.4 检查实验数据\n这些 fastq 文件是通过 2x250 Illumina Miseq 扩增子对 16S rRNA 基因的 V4 区进行测序生成的，这些样本来自实验。现在，只需将它们视为要处理的配对端 fastq 文件。\n\n# 设置文件所在的路径\nPATH_SEQENCING_RAW &lt;- \"data/amplicon/raw/\"\n\n# 查找并排序 R1 和 R2 文件\nfnFs &lt;- sort(list.files(PATH_SEQENCING_RAW, pattern=\"_R1.f.*q.gz\", full.names = TRUE))\nfnRs &lt;- sort(list.files(PATH_SEQENCING_RAW, pattern=\"_R2.f.*q.gz\", full.names = TRUE))\n\nc(fnFs, fnRs) |&gt; basename() |&gt; sort()\n\n#&gt;  [1] \"ZTPSN25UE442-Sep25LHK0_1_R1.fq.gz\" \"ZTPSN25UE442-Sep25LHK0_1_R2.fq.gz\"\n#&gt;  [3] \"ZTPSN25UE443-Sep25LHK0_2_R1.fq.gz\" \"ZTPSN25UE443-Sep25LHK0_2_R2.fq.gz\"\n#&gt;  [5] \"ZTPSN25UE444-Sep25LHK0_3_R1.fq.gz\" \"ZTPSN25UE444-Sep25LHK0_3_R2.fq.gz\"\n#&gt;  [7] \"ZTPSN25UE450-Sep25LHK1_1_R1.fq.gz\" \"ZTPSN25UE450-Sep25LHK1_1_R2.fq.gz\"\n#&gt;  [9] \"ZTPSN25UE451-Sep25LHK1_2_R1.fq.gz\" \"ZTPSN25UE451-Sep25LHK1_2_R2.fq.gz\"\n#&gt; [11] \"ZTPSN25UE452-Sep25LHK1_3_R1.fq.gz\" \"ZTPSN25UE452-Sep25LHK1_3_R2.fq.gz\"\n\n\n\n1.4.1 生成 metadata\n文件名包含 Sample ID，这里直接从 sample ID 获取实验处理。\n\nsample.names = fnFs |&gt;\n    basename() |&gt;\n    str_extract(\"Sep25.*_[0-9]\") |&gt;\n    str_remove(\"^Sep25\")\n\nmeta = tibble(sample_id = sample.names) |&gt;\n    tidyr::separate(sample_id, c(\"treatment\", \"rep\"), sep = \"_\", remove = FALSE)\n\n\n\n1.4.2 查看文件的测序质量\n测序质量的分布是一个重要的指标，通常我们会查看前 3 个样本的测序质量图 1.1。由图可知：\n\nR1 的测序治疗较 R2 差，R2 的测序质量平均值都在 30 以上，且没有明显的波动；\n在 225 bp 以后，序列的整体长度会有明显的下降。\n\n\np1 = plotQualityProfile(fnFs[1:3]) +\n    facet_wrap(~file, ncol=1)\n\np2 = plotQualityProfile(fnRs[1:3]) +\n    facet_wrap(~file, ncol=1) +\n    ylab(\"\")\n\nplot_grid(p1, p2, ncol=2)\n\n\n\n\n\n\n\n图 1.1: 前3个的测序质量\n\n\n\n\n\n测序质量得分在每个位置的分布以灰度热图显示，其中深色对应更高的频率。绘制的线条显示位置统计数据：绿色为平均值，橙色为中位数，虚线橙色为第25和第75百分位数。如果序列长度不同，将绘制一条红线，显示至少延伸到该位置的读数百分比。",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>测序数据预处理</span>"
+    ]
+  },
+  {
+    "objectID": "preprocess.html#过滤和修剪",
+    "href": "preprocess.html#过滤和修剪",
+    "title": "1  测序数据预处理",
+    "section": "1.5 过滤和修剪",
+    "text": "1.5 过滤和修剪\n\n1.5.1 设置过滤文件的产生路径和名称\n\n# Place filtered files in filtered/ subdirectory\nfiltFs &lt;- file.path(PATH_SEQENCING_RAW, \"filtered\", paste0(sample.names, \"_F_filt.fq.gz\"))\nfiltRs &lt;- file.path(PATH_SEQENCING_RAW, \"filtered\", paste0(sample.names, \"_R_filt.fq.gz\"))\nnames(filtFs) &lt;- sample.names\nnames(filtRs) &lt;- sample.names\n\n\n\n1.5.2 对原始数据进行过滤\n\nout &lt;- filterAndTrim(fnFs, filtFs, fnRs, filtRs, \n              maxN = 0, maxEE = c(2,4), truncQ = 0, \n              rm.phix = FALSE, \n              truncLen = c(200,200),\n              compress = TRUE, \n              multithread = TRUE)\nhead(out)\n\n#&gt;                                   reads.in reads.out\n#&gt; ZTPSN25UE442-Sep25LHK0_1_R1.fq.gz   139152    134592\n#&gt; ZTPSN25UE443-Sep25LHK0_2_R1.fq.gz   149434    144540\n#&gt; ZTPSN25UE444-Sep25LHK0_3_R1.fq.gz   140180    134535\n#&gt; ZTPSN25UE450-Sep25LHK1_1_R1.fq.gz   128633    124752\n#&gt; ZTPSN25UE451-Sep25LHK1_2_R1.fq.gz   133500    128168\n#&gt; ZTPSN25UE452-Sep25LHK1_3_R1.fq.gz   143316    137417\n\n\n\n\n1.5.3 估计测序错误率\n在 DADA2 中，learnErrors 是整个流程的关键步骤之一，其目的是学习测序错误模型，这是 DADA2 高精度去噪能力的基础。\n高通量测序（如 Illumina）在读取 DNA 序列时会出现错误，比如碱基错配（substitution）。DADA2 的目标是区分这些测序错误与真实的生物变异（例如不同的细菌或物种）。\n为了做到这一点，DADA2 需要知道测序错误是如何分布的，例如：\n\n一个“A”被错误读成“T”的概率有多大？\n在不同的测序质量分数下，错误概率如何变化？\n\nlearnErrors(filtFs) 会根据过滤后的序列数据（如 filtFs）统计这些碱基替换的发生频率，结合质量分数，拟合出一个错误率矩阵（error rate matrix），这个矩阵是后续 序列去噪（denoising） 的基础。\n只有有了这个模型，DADA2 才能：\n\n判断某条序列的观察频次是否能用测序错误解释；\n决定是否要把这条序列当作真实变体（ASV）保留下来。\n\n对同一台机器、同一批次的样本，可以用一个共享的错误模型。如果你有很多样本，也可以选择只在一部分样本中学习错误，再应用到其他样本中。\n\n# 学习正向和反向的错误模型\nerrF &lt;- learnErrors(filtFs, multithread = TRUE)\n\n#&gt; 107683800 total bases in 538419 reads from 4 samples will be used for learning the error rates.\n\nerrR &lt;- learnErrors(filtRs, multithread = TRUE)\n\n#&gt; 107683800 total bases in 538419 reads from 4 samples will be used for learning the error rates.\n\n\n\nplotErrors(errF, nominalQ = TRUE)\n\n\n\n\n\n\n\n\n\n\n(a) 红色线是理论上的错误率，黑色点是观测错误率，黑色线是拟合（估计）的错误率\n\n\n\n\n\n\n图 1.2: 正向错误模型\n\n\n\n\n\nplotErrors(errR, nominalQ = TRUE)\n\n\n\n\n\n\n\n图 1.3: 反向错误模型\n\n\n\n\n\n\n\n1.5.4 序列去重\n\n# 去除重复序列\n# 仅仅保留重复序列中的一条序列，以在后续序列处理中节省计算资源\nderepFs &lt;- derepFastq(filtFs)\nderepRs &lt;- derepFastq(filtRs)\n\n\n\n1.5.5 根据模型进行匹配\n\ndadaFs &lt;- dada(filtFs, err=errF, multithread = TRUE, verbose = FALSE)\ndadaRs &lt;- dada(filtRs, err=errR, multithread = TRUE, verbose = FALSE)\n\n\ndadaFs[[1]]\n\n#&gt; dada-class: object describing DADA2 denoising results\n#&gt; 1838 sequence variants were inferred from 45002 input unique sequences.\n#&gt; Key parameters: OMEGA_A = 1e-40, OMEGA_C = 1e-40, BAND_SIZE = 16",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>测序数据预处理</span>"
+    ]
+  },
+  {
+    "objectID": "preprocess.html#asv-表",
+    "href": "preprocess.html#asv-表",
+    "title": "1  测序数据预处理",
+    "section": "1.6 ASV 表",
+    "text": "1.6 ASV 表\n\n1.6.1 序列拼接\n\nmergers2 &lt;- mergePairs(dadaFs, derepFs, dadaRs, derepRs)\n\n下面，查看合并后的结果。\n\n$abundance：对应这个正向/反向序列组合的读数数量。\n$sequence：合并后的序列。\n$forward：正向去噪序列的索引。\n$reverse：反向去噪序列的索引。\n$nmatch：重叠区域中匹配的核苷酸数量。\n$nmismatch：重叠区域中不匹配的核苷酸数量。\n$nindel：重叠区域中的插入/缺失数量。\n$prefer：用于重叠区域的序列来源。1=正向；2=反向。\n$accept：如果正向和反向去噪序列之间的重叠至少为minOverlap且最多有maxMismatch差异，则为TRUE。否则为FALSE。\n\n\n# 查看合并后的序列\nhead(mergers2[[1]]) |&gt; as_tibble()\n\n#&gt; # A tibble: 6 × 9\n#&gt;   sequence       abundance forward reverse nmatch nmismatch nindel prefer accept\n#&gt;   &lt;chr&gt;              &lt;int&gt;   &lt;int&gt;   &lt;int&gt;  &lt;int&gt;     &lt;int&gt;  &lt;int&gt;  &lt;dbl&gt; &lt;lgl&gt; \n#&gt; 1 GTGTCAGCCGCCG…       159     252     434    108         0      0      1 TRUE  \n#&gt; 2 GTGTCAGCAGCCG…       142       1       1    108         0      0      1 TRUE  \n#&gt; 3 GTGTCAGCAGCCG…       125     469    1046    108         0      0      1 TRUE  \n#&gt; 4 GTGTCAGCCGCCG…       121       2       1    108         0      0      1 TRUE  \n#&gt; 5 GTGCCAGCAGCCG…       113       3       1    108         0      0      1 TRUE  \n#&gt; 6 GTGCCAGCCGCCG…       108       4       1    108         0      0      1 TRUE\n\n\n\n\n1.6.2 生成 ASV 表\n\n# 生成 ASV 表\nseqtab &lt;- makeSequenceTable(mergers2)\ndim(seqtab)\n\n#&gt; [1]     6 22183\n\n\n\n\n1.6.3 选择目标长度的序列\n515F 和 806R 理论上扩增区域 约 253 bp（不含引物序列）或者 293 bp（含引物序列）。\n\n515F：GTGYCAGCMGCCGCGGTAA\n806R：GGACTACNVGGGTWTCTAAT\n\n使用 515F–806R 进行 16S V4 区扩增，拼接后得到的序列是完全正常、符合设计预期的图 1.4。\n\n# 查看序列长度分布\ntable(nchar(getSequences(seqtab))) |&gt; plot(type = 'l') \n\n\n\n\n\n\n\n图 1.4: 拼接后 ASV 序列的长度分布\n\n\n\n\n\n\n# 筛选目标长度的序列\nseqtab2 &lt;- seqtab[, nchar(getSequences(seqtab)) %in% 290:295]\n# 检查筛选后的维度\ndim(seqtab2)\n\n#&gt; [1]     6 21083\n\n\n\n\n1.6.4 去嵌合体\n\n# 去除嵌合体\nseqtab.nochim &lt;- removeBimeraDenovo(seqtab2, method=\"pooled\", multithread=F, verbose=TRUE)\n\n# 统计去除嵌合体后的 ASV 数量\ndim(seqtab.nochim)\n\n#&gt; [1]    6 7125\n\n# 统计去除嵌合体前后的 ASV 数量占比\nsum(seqtab.nochim)/sum(seqtab)\n\n#&gt; [1] 0.5474293\n\n\n\n\n1.6.5 测序数据处理情况追踪\n\n# 求和函数\ngetN &lt;- function(x) sum(getUniques(x))\n\n# 合并各样本分步数据量\ntrack &lt;- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers2, getN), rowSums(seqtab.nochim))\n# If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)\n# 修改列名\ncolnames(track) &lt;- c(\"input\", \"filtered\", \"denoisedF\", \"denoisedR\", \"merged\", \"nonchim\")\n# 行名修改为样本名\nrownames(track) &lt;- sample.names\n# 统计结果预览\nhead(track)\n\n#&gt;         input filtered denoisedF denoisedR merged nonchim\n#&gt; LHK0_1 139152   134592    129009    126126  97182   54164\n#&gt; LHK0_2 149434   144540    137150    133207  98621   66147\n#&gt; LHK0_3 140180   134535    129277    126297 100141   54221\n#&gt; LHK1_1 128633   124752    121857    120977 108376   56047\n#&gt; LHK1_2 133500   128168    124265    121607 100480   51746\n#&gt; LHK1_3 143316   137417    132756    131321 107880   53074",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>测序数据预处理</span>"
+    ]
+  },
+  {
+    "objectID": "preprocess.html#分配分类",
+    "href": "preprocess.html#分配分类",
+    "title": "1  测序数据预处理",
+    "section": "1.7 分配分类",
+    "text": "1.7 分配分类\n\n1.7.1 分类注释\n\nSILVA_DB_FILE = \"data/silva/silva_nr99_v138.2_wSpecies_train_set.fa.gz\"\n \n# 分配到属级别\ntaxa &lt;- assignTaxonomy(seqtab.nochim, SILVA_DB_FILE, multithread = TRUE, minBoot = 60)\n\n\n# 打印结果\ntaxa |&gt; as_tibble()\n\n#&gt; # A tibble: 7,125 × 7\n#&gt;    Kingdom  Phylum          Class          Order            Family Genus Species\n#&gt;    &lt;chr&gt;    &lt;chr&gt;           &lt;chr&gt;          &lt;chr&gt;            &lt;chr&gt;  &lt;chr&gt; &lt;chr&gt;  \n#&gt;  1 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   \n#&gt;  2 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   \n#&gt;  3 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   \n#&gt;  4 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   \n#&gt;  5 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   \n#&gt;  6 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   \n#&gt;  7 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   \n#&gt;  8 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   \n#&gt;  9 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   \n#&gt; 10 Bacteria Gemmatimonadota Gemmatimonadia Gemmatimonadales Gemma… &lt;NA&gt;  &lt;NA&gt;   \n#&gt; # ℹ 7,115 more rows",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>测序数据预处理</span>"
+    ]
+  },
+  {
+    "objectID": "preprocess.html#保存结果",
+    "href": "preprocess.html#保存结果",
+    "title": "1  测序数据预处理",
+    "section": "1.8 保存结果",
+    "text": "1.8 保存结果\n\n1.8.1 保存 ASV 序列\n将 ASV 序列保存为 FASTA 格式，以便后续使用。\n\nasv_sequence &lt;- getSequences(seqtab.nochim)\n\n为序列指定唯一 ID。\n\nlibrary(digest)\nget_dna_id = function(seq, length = 12){\n    hash = digest(seq, algo = \"sha256\", serialize = FALSE)\n    substr(hash, 1, length)\n}\n\n\n# 生成 ASV ID\nasv_id = paste0(\"ASV\", sapply(asv_sequence, get_dna_id))\n\n# 将数据框转换为 FASTA 格式\nasv_fasta = paste0(\"&gt;\", asv_id, \"\\n\", asv_sequence)\n\n\n# 保存为 FASTA 文件\nwriteLines(asv_fasta, \"data/amplicon/sep25-asv.fasta\")\n\n\n\n1.8.2 保存 ASV 表和分类表\n将 seqtab.nochim 和 taxa 保存为 CSV 文件，便于后续分析和共享。\n\n# ASV表格导出\n# 这里的 seqtab.nochim 是一个数值矩阵，行名是样本名称，列名是 ASV 序列\ncolnames(seqtab.nochim) &lt;- asv_id\nwrite.csv(seqtab.nochim, \"data/amplicon/sep25-asvtab.csv\")\n\n# 分类表格导出\n# 这里的 taxa 是一个文本矩阵，行名是 ASV 序列，列名是分类学层级\nrownames(taxa) &lt;- asv_id\nwrite.csv(taxa, \"data/amplicon/sep25-taxtab.csv\")",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>测序数据预处理</span>"
+    ]
+  },
+  {
+    "objectID": "taxonomy.html",
+    "href": "taxonomy.html",
+    "title": "2  群落结构分析",
+    "section": "",
+    "text": "2.1 概述\n在前一章中，我们使用 DADA2 对原始测序数据进行了预处理，得到了 ASV 表、分类表和样本表。本章将基于这些数据进行群落结构分析——微生物组数据分析的第一步。",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>群落结构分析</span>"
+    ]
+  },
+  {
+    "objectID": "taxonomy.html#概述",
+    "href": "taxonomy.html#概述",
+    "title": "2  群落结构分析",
+    "section": "",
+    "text": "2.1.1 什么是群落结构分析？\n群落结构分析旨在回答两个基本问题：\n\n“样本中存在哪些微生物？” —— 识别群落的成员组成\n“它们的相对丰度如何？” —— 了解各成员在群落中的占比\n\n通过可视化物种组成，我们可以：\n\n了解群落概貌：识别优势菌群，把握群落的基本特征\n发现组间差异：比较不同处理组间的组成差异，形成初步假设\n指导后续分析：为差异分析、网络分析等提供线索\n\n\n\n2.1.2 为何群落结构分析是第一步？\n在微生物组数据分析的标准流程中，群落结构分析通常作为探索性数据分析（EDA）的起点：\n\n数据质量检查：通过物种组成图可以直观发现异常样本（如某样本组成与其他重复差异极大，可能存在污染）\n初步假设生成：肉眼观察到的组间差异可以指导后续的统计检验方向\n分析可行性评估：判断样本分组是否合理，是否需要调整分组策略\n\n\n\n2.1.3 microtable 对象：分析的基础\n本章所有分析都基于 microtable 对象。下图展示了 microtable 的内部结构和关键函数：\n\n\n\n\n\n\n\n\n图 2.1: microtable 对象结构框架\n\n\n\n\n\n图注：矩形框内为函数，红色矩形表示重要函数，虚线框表示需要关注的关键对象\nmicrotable 对象整合了三大核心数据表：\n\notu_table：ASV × 样本的丰度矩阵\nsample_table：样本的元数据（如处理组、环境因子）\ntax_table：ASV 的分类学注释\n\n本章将通过 trans_abund 类对 microtable 对象进行转化和可视化。\n\n\n2.1.4 分析内容\n物种组成分析通常在多个分类等级（门、纲、目、科、属）进行，以不同分辨率展示群落结构。常用的可视化方式包括：\n\n\n\n图表类型\n适用场景\n优势\n\n\n\n\n堆叠柱状图\n展示各样本的物种组成比例\n直观比较组间差异\n\n\n热图\n展示高丰度物种在各样本中的分布\n适合大量分类群，可聚类\n\n\n箱线图\n比较不同组间某分类群的丰度分布\n显示组内变异和统计差异\n\n\n饼图\n展示组平均组成的整体比例\n适合展示整体构成",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>群落结构分析</span>"
+    ]
+  },
+  {
+    "objectID": "taxonomy.html#流程",
+    "href": "taxonomy.html#流程",
+    "title": "2  群落结构分析",
+    "section": "2.2 流程",
+    "text": "2.2 流程\n在 microeco 包中，群落结构分析主要通过 trans_abund 类实现，其工作流程如下：\n\n数据准备：确保 microtable 对象已正确构建，包含 OTU/ASV 表、样本表和分类表\n创建分析对象：使用 trans_abund$new() 初始化分析对象，指定目标分类等级（如 Phylum、Genus）\n可视化：调用相应的绘图函数生成各种图表\n\ntrans_abund 类支持多种图表类型：\n\n\n\n图表类型\n函数\n适用场景\n\n\n\n\n堆叠柱状图\nplot_bar()\n展示各样本的物种组成比例\n\n\n热图\nplot_heatmap()\n展示高丰度物种在各样本中的分布\n\n\n箱线图\nplot_box()\n比较不同组间某分类群的丰度分布\n\n\n饼图\nplot_pie()\n展示组平均组成的整体比例",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>群落结构分析</span>"
+    ]
+  },
+  {
+    "objectID": "taxonomy.html#实现",
+    "href": "taxonomy.html#实现",
+    "title": "2  群落结构分析",
+    "section": "2.3 实现",
+    "text": "2.3 实现",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>群落结构分析</span>"
+    ]
+  },
+  {
+    "objectID": "taxonomy.html#构建-microtable-对象",
+    "href": "taxonomy.html#构建-microtable-对象",
+    "title": "2  群落结构分析",
+    "section": "2.4 构建 microtable 对象",
+    "text": "2.4 构建 microtable 对象\n这里使用 microeco 软件包进行数据分析。\n首先需要从数据保存的目录读取数据，并构建 microtable 对象。\n\nPATH = \"data/amplicon/processed\"\nlist.files(PATH, full.names = TRUE)\n\n#&gt; [1] \"data/amplicon/processed/asv.fasta\"   \n#&gt; [2] \"data/amplicon/processed/asvtab.csv\"  \n#&gt; [3] \"data/amplicon/processed/metadata.csv\"\n#&gt; [4] \"data/amplicon/processed/taxtab.csv\"\n\n\n\nmetadata_file  = file.path(PATH, \"metadata.csv\")\notu_table_file = file.path(PATH, \"asvtab.csv\")\ntax_table_file = file.path(PATH, \"taxtab.csv\")\nsequence_file  = file.path(PATH, \"asv.fasta\")\n\n\n2.4.1 载入包\n\nlibrary(tidyverse)\nlibrary(microeco)\n\ntheme_set(theme_bw())\n\n\n\n2.4.2 OTU 表\n\notu_table = read_csv(otu_table_file)\notu_table = column_to_rownames(otu_table, var = names(otu_table)[1])\n\n在 microeco 包（以及大多数 R 语言生物信息包）的规范中，microtable 对 otu_table 的格式有严格要求：行必须是 Taxa（ASV/OTU），列必须是 Samples。\n如果你的数据正好反过来了（行是样品，列是 ASV），需要在传入 otu_table 之前，使用 t() 函数对其进行转置，并确保它仍然是一个 data.frame。\n\notu_table &lt;- as.data.frame(t(otu_table))\n\n为了让你直观理解 microtable 的结构逻辑，可以参考下图的对应关系：\n\nOTU Table: 行名必须对接 Taxonomy Table 的行名（即 ASV ID）。\nOTU Table: 列名必须对接 Sample Table 的行名（即 Sample ID）。\n\n\n\n2.4.3 Sample 表\n\nsample_table = read_csv(metadata_file)\nsample_table = column_to_rownames(sample_table, var = names(sample_table)[1])\n\n\n\n2.4.4 Taxonomy 表\n\ntaxon_table = read_csv(tax_table_file)\ntaxon_table = column_to_rownames(taxon_table, var = names(taxon_table)[1]) |&gt; \n  mutate(Genus = if_else(str_detect(Genus, \"Burkholderia\"), \"Burkholderia\", Genus))\n\n\n\n2.4.5 构建对象\n构建 microtable 对象。\n\nmt = microtable$new(otu_table = otu_table, sample_table = sample_table, tax_table = taxon_table)\nmt\n\n#&gt; microtable-class object:\n#&gt; sample_table have 12 rows and 8 columns\n#&gt; otu_table have 7230 rows and 12 columns\n#&gt; tax_table have 7230 rows and 7 columns\n\n\n处理 Taxonmic 表格中的 NA 值。\n\n删掉 Phylum == NA 的 ASV（根本没比对上的垃圾序列）。\n\n\nmt$tax_table = subset(mt$tax_table, !is.na(Phylum))\nmt$tidy_dataset()\n\n\n为未知的 Genus 填充数据（自上级非 NA）。\n\n\n# 该函数会自动查找分类表中的缺失值并填充\nmt$tax_table &lt;- tidy_taxonomy(mt$tax_table)\n\n# 填充完成后，运行 tidy_dataset 同步一下\nmt$tidy_dataset()\n\n\n\n2.4.6 门水平的物种组成\n首先，我们在门（Phylum）水平上分析物种组成。这有助于把握群落的整体框架，因为门水平的分类群数量相对较少，易于解释。\n\nt1 = trans_abund$new(dataset = mt, taxrank = \"Phylum\", ntaxa = 8)\nt1$plot_bar(xtext_angle = 45, facet = \"treatment\", xtext_keep = FALSE)\n\n\n\n\n\n\n\n图 2.2: 门水平物种组成的堆叠柱状图\n\n\n\n\n\n参数说明：\n\ntaxrank = \"Phylum\"：指定在门水平汇总数据\nntaxa = 8：选择丰度最高的 8 个门，其余归为 “Others”\nfacet = \"treatment\"：按处理组分面展示\nxtext_keep = FALSE：不显示样本名称，使图形更简洁\n\n\n\n2.4.7 纲水平的物种组成\n进一步在纲（Class）水平上分析，可以获得更精细的分类信息。\n\nt1 = trans_abund$new(dataset = mt, taxrank = \"Class\", ntaxa = 15)\nt1$plot_bar(xtext_angle = 45, facet = \"treatment\", xtext_keep = FALSE)\n\n\n\n\n\n\n\n图 2.3: 纲水平物种组成的堆叠柱状图\n\n\n\n\n\n\n\n2.4.8 属水平的热图\n热图是展示大量分类群在多个样本中分布模式的有效方式。我们在属（Genus）水平上绘制热图，以观察高丰度属的分布特征。\n\nt1 = trans_abund$new(dataset = mt, taxrank = \"Genus\", ntaxa = 30)\nt1$plot_heatmap(pheatmap = TRUE, facet = \"treatment\")\n\n#&gt; TableGrob (5 x 6) \"layout\": 6 grobs\n#&gt;   z     cells      name                        grob\n#&gt; 1 1 (2-2,3-3)  col_tree polyline[GRID.polyline.335]\n#&gt; 2 2 (4-4,1-1)  row_tree polyline[GRID.polyline.336]\n#&gt; 3 3 (4-4,3-3)    matrix       gTree[GRID.gTree.338]\n#&gt; 4 4 (5-5,3-3) col_names         text[GRID.text.339]\n#&gt; 5 5 (4-4,4-4) row_names         text[GRID.text.340]\n#&gt; 6 6 (3-5,5-5)    legend       gTree[GRID.gTree.343]\n\n\n\n\n\n\n\n\n图 2.4: 属水平物种丰度热图\n\n\n\n\n\n热图解读要点：\n\n颜色深浅表示相对丰度的高低（通常颜色越深丰度越高）\n行聚类显示分类群在样本间的相似分布模式\n列聚类显示样本间的组成相似性\n\n\n\n2.4.9 箱线图比较组间差异\n箱线图可以直观地展示特定分类群在不同处理组间的丰度分布差异。\n\nt1 = trans_abund$new(dataset = mt, taxrank = \"Phylum\", ntaxa = 5)\nt1$plot_box(group = \"treatment\", xtext_angle = 0)\n\n\n\n\n\n\n\n图 2.5: 门水平主要分类群的组间丰度分布",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>群落结构分析</span>"
+    ]
+  },
+  {
+    "objectID": "taxonomy.html#结果",
+    "href": "taxonomy.html#结果",
+    "title": "2  群落结构分析",
+    "section": "2.5 结果",
+    "text": "2.5 结果\n\n2.5.1 群落组成特征\n从门水平的分析结果（图 2.2）可以看出，本研究土壤微生物组主要由以下几个门组成：\n\n变形菌门（Proteobacteria）：通常是最丰富的门之一，包含多种代谢类型的细菌\n放线菌门（Actinobacteria）：在土壤中广泛分布，参与有机物分解\n酸杆菌门（Acidobacteria）：土壤中的常见类群，适应酸性环境\n芽孢杆菌门（Bacillota，原 Firmicutes）：包含多种芽孢形成菌\n\n\n\n2.5.2 处理组间差异的初步观察\n通过对比不同处理组（ZY0、ZY0.5、ZY1）的柱状图，我们可以初步观察到：\n\n优势门的相对比例变化：某些门在不同处理组间的相对丰度可能存在差异，这可能反映了处理条件对微生物群落的选择作用\n群落均匀度：各组内样本的重复性较好，表明组内变异相对较小\n\n\n\n2.5.3 热图揭示的精细模式\n属水平的热图（图 2.4）揭示了更精细的分布模式：\n\n核心微生物组：某些属在所有样本中均有较高丰度，可能代表土壤微生物组的核心功能类群\n处理组特异性：部分属在特定处理组中富集，这些类群可能是后续差异分析的重点关注对象\n\n\n\n2.5.4 分析与讨论\n群落结构分析的结果为理解处理效应提供了初步线索。在本案例中：\n\n环境适应性：不同处理条件（ZY0、ZY0.5、ZY1 可能代表不同施肥或处理强度）可能塑造了不同的微生物群落结构，反映了微生物对环境变化的适应\n功能推断：基于已知的分类群功能特征，我们可以初步推测：\n\n某些参与养分循环的门（如 Proteobacteria 和 Actinobacteria）的丰度变化可能与土壤肥力相关\n酸杆菌门的相对丰度可能与土壤 pH 条件有关\n\n后续分析方向：群落结构分析的结果可指导后续分析：\n\n对于在柱状图中肉眼可见组间差异的分类群，可通过差异分析进行统计验证\n热图中聚类在一起的分类群可能在功能上相关，可作为网络分析的候选对象\n\n\n注意事项：物种组成分析展示的是相对丰度数据，在解释时需要注意组成性效应（Compositional effect），即一个分类群的相对丰度增加可能是由于其他分类群减少所致，而非其绝对丰度真正增加。",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>群落结构分析</span>"
+    ]
+  },
+  {
+    "objectID": "taxonomy.html#小提示",
+    "href": "taxonomy.html#小提示",
+    "title": "2  群落结构分析",
+    "section": "2.6 小提示",
+    "text": "2.6 小提示\nmicroeco 包的使用文档参见：https://chiliubio.github.io/microeco_tutorial。\n\n使用 tidy_taxonomy() 函数确保分类表格式统一，特别是处理未知分类等级时\n绘制热图时，pheatmap = TRUE 参数可以生成更美观的聚类热图\n箱线图中添加 add_sig = TRUE 参数可以显示统计显著性标记（需先运行差异分析）",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>群落结构分析</span>"
+    ]
+  },
+  {
+    "objectID": "alpha.html",
+    "href": "alpha.html",
+    "title": "3  α 多样性",
+    "section": "",
+    "text": "3.1 概述\nAlpha 多样性（α diversity）用于描述单个样本内微生物群落的物种丰富度和均匀度，是微生物组分析中最基本的指标之一。理解 Alpha 多样性有助于评估：",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>α 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "alpha.html#概述",
+    "href": "alpha.html#概述",
+    "title": "3  α 多样性",
+    "section": "",
+    "text": "群落复杂度：样本中包含多少种微生物？分布是否均匀？\n生态位容纳能力：环境能支持多少物种共存？\n干扰响应：环境变化如何影响群落内部的多样性？\n\n\n3.1.1 常用 Alpha 多样性指标\n\n\n\n\n\n\n\n\n\n指标\n含义\n计算方式\n敏感性\n\n\n\n\nObserved\n观测到的 ASV/OTU 数量\n直接计数\n受测序深度影响\n\n\nChao1\n估计物种总数\n基于稀有物种推算\n偏向稀有物种\n\n\nShannon\n综合丰富度和均匀度\n\\(H' = -\\sum p_i \\ln(p_i)\\)\n中等敏感\n\n\nSimpson\n优势度指数\n\\(\\lambda = \\sum p_i^2\\)\n偏向优势种\n\n\nPielou\n均匀度指数\n\\(J' = H' / \\ln(S)\\)\n纯均匀度度量\n\n\n\n其中，\\(p_i\\) 是第 \\(i\\) 个物种的相对丰度，\\(S\\) 是物种总数。\n\n\n3.1.2 分析目标\n本分析旨在：\n\n评估不同处理组样本的 Alpha 多样性水平\n比较处理组间 Alpha 多样性的差异是否显著\n探讨环境因素与 Alpha 多样性的关系",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>α 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "alpha.html#流程",
+    "href": "alpha.html#流程",
+    "title": "3  α 多样性",
+    "section": "3.2 流程",
+    "text": "3.2 流程\n在 microeco 包中，Alpha 多样性分析的工作流程如下：\n\n数据标准化（抽平）：使用 rarefy_samples() 将各样本抽平到相同序列数，消除测序深度差异的影响\n计算多样性指标：使用 cal_alphadiv() 计算各类 Alpha 多样性指数\n差异检验：使用 trans_alpha 类进行组间差异统计检验\n可视化：绘制箱线图或小提琴图展示结果\n\n关键注意事项：\n\n抽平深度应根据样本的最低测序量确定，通常保留 80% 以上样本可达深度\n多样性差异检验方法选择取决于数据分布（正态/非正态）和组数（两组/多组）",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>α 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "alpha.html#构建-microtable-对象",
+    "href": "alpha.html#构建-microtable-对象",
+    "title": "3  α 多样性",
+    "section": "3.3 构建 microtable 对象",
+    "text": "3.3 构建 microtable 对象\n这里使用 microeco 软件包进行数据分析。\n首先需要从数据保存的目录读取数据，并构建 microtable 对象。\n\nPATH = \"data/amplicon/processed\"\nlist.files(PATH, full.names = TRUE)\n\n#&gt; [1] \"data/amplicon/processed/asv.fasta\"   \n#&gt; [2] \"data/amplicon/processed/asvtab.csv\"  \n#&gt; [3] \"data/amplicon/processed/metadata.csv\"\n#&gt; [4] \"data/amplicon/processed/taxtab.csv\"\n\n\n\nmetadata_file  = file.path(PATH, \"metadata.csv\")\notu_table_file = file.path(PATH, \"asvtab.csv\")\ntax_table_file = file.path(PATH, \"taxtab.csv\")\nsequence_file  = file.path(PATH, \"asv.fasta\")\n\n\n3.3.1 载入包\n\nlibrary(tidyverse)\nlibrary(microeco)\n\ntheme_set(theme_bw())\n\n\n\n3.3.2 OTU 表\n\notu_table = read_csv(otu_table_file)\notu_table = column_to_rownames(otu_table, var = names(otu_table)[1])\n\n在 microeco 包（以及大多数 R 语言生物信息包）的规范中，microtable 对 otu_table 的格式有严格要求：行必须是 Taxa（ASV/OTU），列必须是 Samples。\n如果你的数据正好反过来了（行是样品，列是 ASV），需要在传入 otu_table 之前，使用 t() 函数对其进行转置，并确保它仍然是一个 data.frame。\n\notu_table &lt;- as.data.frame(t(otu_table))\n\n为了让你直观理解 microtable 的结构逻辑，可以参考下图的对应关系：\n\nOTU Table: 行名必须对接 Taxonomy Table 的行名（即 ASV ID）。\nOTU Table: 列名必须对接 Sample Table 的行名（即 Sample ID）。\n\n\n\n3.3.3 Sample 表\n\nsample_table = read_csv(metadata_file)\nsample_table = column_to_rownames(sample_table, var = names(sample_table)[1])\n\n\n\n3.3.4 Taxonomy 表\n\ntaxon_table = read_csv(tax_table_file)\ntaxon_table = column_to_rownames(taxon_table, var = names(taxon_table)[1]) |&gt; \n  mutate(Genus = if_else(str_detect(Genus, \"Burkholderia\"), \"Burkholderia\", Genus))\n\n\n\n3.3.5 构建对象\n构建 microtable 对象。\n\nmt = microtable$new(otu_table = otu_table, sample_table = sample_table, tax_table = taxon_table)\nmt\n\n#&gt; microtable-class object:\n#&gt; sample_table have 12 rows and 8 columns\n#&gt; otu_table have 7230 rows and 12 columns\n#&gt; tax_table have 7230 rows and 7 columns\n\n\n处理 Taxonmic 表格中的 NA 值。\n\n删掉 Phylum == NA 的 ASV（根本没比对上的垃圾序列）。\n\n\nmt$tax_table = subset(mt$tax_table, !is.na(Phylum))\nmt$tidy_dataset()\n\n\n为未知的 Genus 填充数据（自上级非 NA）。\n\n\n# 该函数会自动查找分类表中的缺失值并填充\nmt$tax_table &lt;- tidy_taxonomy(mt$tax_table)\n\n# 填充完成后，运行 tidy_dataset 同步一下\nmt$tidy_dataset()",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>α 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "alpha.html#实现",
+    "href": "alpha.html#实现",
+    "title": "3  α 多样性",
+    "section": "3.4 实现",
+    "text": "3.4 实现\n\n3.4.1 抽平 (Rarefaction)\n为了保证 Alpha 多样性的公平比较，首先将样本抽平到相同的测序深度。\n\n3.4.1.1 为什么需要抽平？\n测序深度（每个样本测得的序列总数）在不同样本间往往存在差异：\n\n\n\n样本\n测序深度\n观测到的 ASV 数\n\n\n\n\nA\n100,000\n500\n\n\nB\n50,000\n400\n\n\n\n样本 A 观测到的 ASV 更多，可能仅仅是因为测了更多序列，而非真实多样性更高。抽平通过将各样本标准化为相同深度，确保多样性差异反映真实的生物学差异，而非测序 effort 的差异。\n\n\n\n\n\n\n抽平原理的直观理解\n\n\n\n想象你在两个花园里调查昆虫多样性： - 花园1：你观察了100只昆虫，发现了10个物种 - 花园2：你只观察了50只昆虫，发现了8个物种\n花园1发现更多物种，可能是因为你观察得更久。为了公平比较，你应该在两个花园都观察相同数量（比如50只）的昆虫，再比较发现的物种数。\n抽平就是做这个”标准化观察 effort”的过程。\n\n\n\n\n3.4.1.2 抽平的方法\n抽平通过随机抽取（不放回）指定数量的序列实现：\n\n确定抽平深度（通常是样本中最小的测序量）\n对每个样本随机抽取该深度的序列\n基于抽平后的数据计算多样性指标\n\n这样，所有样本都在相同的”检测 effort”下进行比较。\n\n# 检查各样本的原始测序量\ndepth_summary &lt;- mt$sample_sums() |&gt; summary()\ndepth_summary\n\n#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. \n#&gt;   38437   44840   45998   46217   47845   51769\n\n\n根据测序深度的分布，选择合适的抽平深度。通常选择样本最低测序量或覆盖大多数样本的深度。\n\n# 克隆原始数据，保留原始对象\nmt_rarafied = clone(mt)\n\n# 确定抽平深度（使用最小样本深度或设定阈值）\nrarefy_depth &lt;- min(mt$sample_sums())\ncat(\"抽平深度:\", rarefy_depth, \"\\n\")\n\n#&gt; 抽平深度: 38437\n\n# 执行抽平\nmt_rarafied$rarefy_samples(sample.size = rarefy_depth)\nmt_rarafied$tidy_dataset()\n\n验证抽平后的结果：\n\n# 确认所有样本现在具有相同的序列数\nmt_rarafied$sample_sums() |&gt; summary()\n\n#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. \n#&gt;   38437   38437   38437   38437   38437   38437\n\n\n\n\n\n3.4.2 计算 Alpha 多样性指标\n抽平后，使用 cal_alphadiv() 函数计算常用的 Alpha 多样性指标。\n\n# 计算多样性指标\nmeasures = c(\"Observed\", \"Chao1\", \"Shannon\", \"Simpson\")\nmt_rarafied$cal_alphadiv(measures = measures)\n\n# 查看结果\nhead(mt_rarafied$alpha_diversity)\n\n#&gt;         Observed    Chao1  se.chao1       ACE   se.ACE  Shannon   Simpson\n#&gt; LHK1_1       906  906.500 1.2987992  906.2693  7.89234 6.470400 0.9978574\n#&gt; LHK1_2      1274 1274.857 1.3953404 1274.5521 11.75250 6.919913 0.9987974\n#&gt; LHK1_3      1502 1506.200 3.1501160 1505.1933 14.72209 7.099507 0.9990324\n#&gt; LHK1_4      1141 1141.000 0.1665936 1141.1427 11.33711 6.769538 0.9985685\n#&gt; LHK05_1     1473 1474.667 2.0448896 1473.8534 14.55626 7.083625 0.9990061\n#&gt; LHK05_2     1291 1293.154 2.2684345 1292.4578 12.13573 6.950841 0.9988697\n\n\n指标解释： - Observed：实际检测到的 ASV 数量，直接反映物种丰富度 - Chao1：基于稀有物种估计的总物种数，适合评估未观测到的物种 - Shannon：综合考虑丰富度和均匀度，值越大表示多样性越高 - Simpson：反映随机选取两个个体属于同一物种的概率，值越小表示多样性越高\n\n\n3.4.3 创建分析对象并进行差异检验\n使用 trans_alpha 类来关联 Alpha 多样性数据和样本分组信息，进行统计检验。\n\nrequire(FSA)\nrequire(rcompanion)\n\n# 创建 trans_alpha 对象\nt1 = trans_alpha$new(dataset = mt_rarafied, group = \"treatment\")\n\n# 使用 Kruskal-Wallis 检验（非参数检验，适合多组比较）\nt1$cal_diff(method = \"KW_dunn\", KW_dunn_letter = TRUE)\n\n# 查看差异检验结果\nt1$res_diff\n\n#&gt;     Measure                                     Method Group Letter MonoLetter\n#&gt; 1  Observed Dunn's Kruskal-Wallis Multiple Comparisons ZY0.5      a          a\n#&gt; 2  Observed Dunn's Kruskal-Wallis Multiple Comparisons   ZY0      a          a\n#&gt; 3  Observed Dunn's Kruskal-Wallis Multiple Comparisons   ZY1      a          a\n#&gt; 4     Chao1 Dunn's Kruskal-Wallis Multiple Comparisons ZY0.5      a          a\n#&gt; 5     Chao1 Dunn's Kruskal-Wallis Multiple Comparisons   ZY0      a          a\n#&gt; 6     Chao1 Dunn's Kruskal-Wallis Multiple Comparisons   ZY1      a          a\n#&gt; 7       ACE Dunn's Kruskal-Wallis Multiple Comparisons ZY0.5      a          a\n#&gt; 8       ACE Dunn's Kruskal-Wallis Multiple Comparisons   ZY0      a          a\n#&gt; 9       ACE Dunn's Kruskal-Wallis Multiple Comparisons   ZY1      a          a\n#&gt; 10  Shannon Dunn's Kruskal-Wallis Multiple Comparisons ZY0.5      a          a\n#&gt; 11  Shannon Dunn's Kruskal-Wallis Multiple Comparisons   ZY0      a          a\n#&gt; 12  Shannon Dunn's Kruskal-Wallis Multiple Comparisons   ZY1      a          a\n#&gt; 13  Simpson Dunn's Kruskal-Wallis Multiple Comparisons ZY0.5      a          a\n#&gt; 14  Simpson Dunn's Kruskal-Wallis Multiple Comparisons   ZY0      a          a\n#&gt; 15  Simpson Dunn's Kruskal-Wallis Multiple Comparisons   ZY1      a          a\n\n\n方法选择说明：\n\nKW_dunn：Kruskal-Wallis 检验结合 Dunn’s 事后检验，适用于非正态分布数据的多组比较\nanova：方差分析，适用于正态分布数据\nwilcox：Wilcoxon 秩和检验，适用于两组比较\n\n\n\n3.4.4 可视化\n\n3.4.4.1 多指标综合展示\n\nrequire(patchwork)\n\n# 绘制所有指标的箱线图\nplots = lapply(measures, function(x){\n  t1$plot_alpha(measure = x, add = \"jitter\") +\n    ggtitle(x) +\n    theme(legend.position = \"none\")\n})\n\nwrap_plots(plots, ncol = 2)\n\n\n\n\n\n\n\n图 3.1: 不同处理组的 Alpha 多样性比较\n\n\n\n\n\n\n\n3.4.4.2 单指标详细展示\n以 Shannon 多样性为例，展示更详细的可视化：\n\nt1$plot_alpha(measure = \"Shannon\", add = \"jitter\", y_increase = 0.1)\n\n\n\n\n\n\n\n图 3.2: Shannon 多样性指数的比较",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>α 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "alpha.html#结果",
+    "href": "alpha.html#结果",
+    "title": "3  α 多样性",
+    "section": "3.5 结果",
+    "text": "3.5 结果\n\n3.5.1 Alpha 多样性总体特征\n从 图 3.1 可以看出各处理组的 Alpha 多样性特征：\n\n物种丰富度（Observed 和 Chao1）：\n\n反映样本中实际存在或估计的物种数量\n组间的差异模式可以反映处理条件对群落丰富度的影响\n\n综合多样性（Shannon）：\n\n同时考虑物种数量和分布均匀度\n是生态学中最常用的多样性指标\n\n优势度（Simpson）：\n\n反映群落是否被少数优势种主导\n值越接近 0，表示多样性越高\n\n\n\n\n3.5.2 组间差异分析\n基于统计检验结果（t1$res_diff）：\n显著性解读： - 若检验结果显示组间差异显著（P &lt; 0.05），说明处理条件对微生物多样性产生了可检测的影响 - 事后检验的字母标记（如 a、b、ab）指示具体哪些组之间存在显著差异：不同字母表示显著差异，相同字母表示无显著差异\n可能的生物学解释：\n\n如果 ZY0.5 组的 Shannon 多样性显著高于其他组：\n\n可能表明中等强度的处理（如中等施肥量）创造了更适宜多种微生物共存的环境\n符合生态学中的”中度干扰假说”\n\n如果处理组间无显著差异：\n\n说明当前处理强度可能不足以改变土壤微生物的整体多样性\n或者土壤微生物组对处理有较强的抵抗力/恢复力\n\n如果某一处理组的丰富度显著降低：\n\n可能表明该处理条件对某些微生物类群产生了抑制效应\n需要结合物种组成分析进一步探究受影响的类群\n\n\n\n\n3.5.3 与环境因子的关系（可选拓展）\n可以进一步探索 Alpha 多样性与环境因子的关系：\n\n# 合并多样性数据与环境数据\nalpha_env &lt;- mt_rarafied$alpha_diversity |&gt;\n  as.data.frame() |&gt;\n  rownames_to_column(\"sample_id\") |&gt;\n  left_join(\n    mt_rarafied$sample_table |&gt; rownames_to_column(\"sample_id\"),\n    by = \"sample_id\"\n  )\n\n# 绘制 Shannon 与 pH 的关系\nggplot(alpha_env, aes(x = pH, y = Shannon, color = treatment)) +\n  geom_point(size = 3) +\n  geom_smooth(method = \"lm\", se = TRUE, aes(group = 1), color = \"black\") +\n  theme_bw() +\n  labs(x = \"pH\", y = \"Shannon Diversity\")\n\n\n\n\n\n\n\n图 3.3: Alpha 多样性与环境因子的关系\n\n\n\n\n\n\n\n3.5.4 结论与建议\n基于 Alpha 多样性分析，我们可以得出以下结论：\n\n处理效应评估：不同处理条件对土壤微生物 Alpha 多样性的影响程度（显著/不显著）\n最佳处理条件识别：如果存在显著差异，可以识别出维持或提高微生物多样性的最佳处理条件\n后续分析建议：\n\n若 Alpha 多样性存在显著差异，建议进一步分析哪些类群对多样性变化贡献最大\n若 Alpha 多样性无显著差异，但物种组成可能有变化，建议关注 Beta 多样性分析\n\n\n分析局限性说明：\n\nAlpha 多样性仅反映样本内的多样性特征，无法说明样本间的相似性差异\n抽平过程会舍弃部分数据，对于低深度样本可能造成信息损失\n相对丰度数据可能存在组成性效应，解释时需谨慎",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>α 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "alpha.html#小提示",
+    "href": "alpha.html#小提示",
+    "title": "3  α 多样性",
+    "section": "3.6 小提示",
+    "text": "3.6 小提示\nmicroeco 包的使用文档参见：https://chiliubio.github.io/microeco_tutorial。\n\n抽平前务必检查各样本的测序深度分布，避免过度抽平导致数据损失\ncal_diff() 函数支持多种统计方法，根据数据特点选择合适的方法\n使用 add = \"jitter\" 参数可以在箱线图上叠加散点，更清楚地展示数据分布\n字母标记法中，相同字母表示无显著差异，不同字母表示存在显著差异",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>α 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "beta.html",
+    "href": "beta.html",
+    "title": "4  β 多样性",
+    "section": "",
+    "text": "4.1 概述\nBeta 多样性（β diversity）描述不同样本间微生物群落组成的差异程度，是理解微生物群落空间分布、环境响应和生态过程的关键指标。与 Alpha 多样性关注”样本内有多少物种”不同，Beta 多样性回答”不同样本间的物种组成有多相似/不同”。",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>β 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "beta.html#概述",
+    "href": "beta.html#概述",
+    "title": "4  β 多样性",
+    "section": "",
+    "text": "4.1.1 Beta 多样性的生态学意义\n\n群落异质性：评估不同处理组或环境条件下群落组成的分化程度\n环境梯度响应：揭示微生物群落沿环境梯度的变化规律\n生物地理学模式：探索空间距离对群落相似性的影响\n处理效应评估：量化实验处理对群落结构的改变程度\n\n\n\n4.1.2 常用距离/相异度指标\n\n\n\n指标\n特点\n适用场景\n\n\n\n\nBray-Curtis\n考虑物种丰度差异\n最常用的生态距离，推荐首选\n\n\nJaccard\n仅考虑物种有无\n关注物种存在与否，忽略丰度\n\n\nWeighted Unifrac\n结合丰度和系统发育\n强调优势谱系的差异\n\n\nUnweighted Unifrac\n仅考虑系统发育\n关注稀有谱系的差异\n\n\n\nBray-Curtis 相异度计算公式：\n\\[BC_{ij} = 1 - \\frac{2\\sum_{k} \\min(x_{ik}, x_{jk})}{\\sum_{k} x_{ik} + \\sum_{k} x_{jk}}\\]\n其中 \\(x_{ik}\\) 表示物种 \\(k\\) 在样本 \\(i\\) 中的丰度。\n\n\n\n\n\n\n口算示例：理解 Bray-Curtis 距离\n\n\n\n假设两个土壤样本（A 和 B），各检测了 3 个物种的丰度（reads 数）：\n\n\n\n物种\n样本 A\n样本 B\n\n\n\n\n物种甲\n10\n8\n\n\n物种乙\n5\n0\n\n\n物种丙\n0\n2\n\n\n\n口算步骤：\n第一步：找较小值（min）并求和\n\n物种甲：min(10, 8) = 8\n物种乙：min(5, 0) = 0\n物种丙：min(0, 2) = 0\n共同部分 = 8 + 0 + 0 = 8\n\n第二步：算总和\n\n样本 A 总计 = 10 + 5 + 0 = 15\n样本 B 总计 = 8 + 0 + 2 = 10\n总计 = 15 + 10 = 25\n\n第三步：套公式\n\\[BC = 1 - \\frac{2 \\times 8}{25} = 1 - 0.64 = 0.36\\]\n生物学意义解读：\n\nBC = 0.36（范围 0~1，越接近 1 差异越大）\n共同部分占 64%：两个样本共享了约 64% 的物种组成（加权 by 丰度）\n物种乙是样本 A 的”特色物种”（在 B 中缺失），贡献了差异\n物种丙是样本 B 的”特色物种”（在 A 中缺失），贡献了差异\n\n直观理解：如果两个样本完全相同 → BC = 0；如果完全没有共同物种 → BC = 1\n\n\n\n\n4.1.3 分析内容\n本分析包含以下主要内容：\n\n排序分析（PCoA/NMDS）：在低维空间可视化样本间的相似性关系\n组间距离分析：量化和比较组内与组间的群落差异\n统计检验（PERMANOVA）：检验组间差异的统计显著性",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>β 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "beta.html#流程",
+    "href": "beta.html#流程",
+    "title": "4  β 多样性",
+    "section": "4.2 流程",
+    "text": "4.2 流程\n在 microeco 包中，Beta 多样性分析通过 trans_beta 类实现，主要流程如下：\n\n计算距离矩阵：使用 cal_betadiv() 计算各类 Beta 多样性距离\n创建分析对象：使用 trans_beta$new() 初始化，指定距离类型\n排序分析：使用 cal_ordination() 进行 PCoA 或 NMDS 排序\n组间比较：使用 cal_group_distance() 和 cal_manova() 进行统计检验\n可视化：绘制排序图、距离箱线图等",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>β 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "beta.html#构建-microtable-对象",
+    "href": "beta.html#构建-microtable-对象",
+    "title": "4  β 多样性",
+    "section": "4.3 构建 microtable 对象",
+    "text": "4.3 构建 microtable 对象\n这里使用 microeco 软件包进行数据分析。\n首先需要从数据保存的目录读取数据，并构建 microtable 对象。\n\nPATH = \"data/amplicon/processed\"\nlist.files(PATH, full.names = TRUE)\n\n#&gt; [1] \"data/amplicon/processed/asv.fasta\"   \n#&gt; [2] \"data/amplicon/processed/asvtab.csv\"  \n#&gt; [3] \"data/amplicon/processed/metadata.csv\"\n#&gt; [4] \"data/amplicon/processed/taxtab.csv\"\n\n\n\nmetadata_file  = file.path(PATH, \"metadata.csv\")\notu_table_file = file.path(PATH, \"asvtab.csv\")\ntax_table_file = file.path(PATH, \"taxtab.csv\")\nsequence_file  = file.path(PATH, \"asv.fasta\")\n\n\n4.3.1 载入包\n\nlibrary(tidyverse)\nlibrary(microeco)\n\ntheme_set(theme_bw())\n\n\n\n4.3.2 OTU 表\n\notu_table = read_csv(otu_table_file)\notu_table = column_to_rownames(otu_table, var = names(otu_table)[1])\n\n在 microeco 包（以及大多数 R 语言生物信息包）的规范中，microtable 对 otu_table 的格式有严格要求：行必须是 Taxa（ASV/OTU），列必须是 Samples。\n如果你的数据正好反过来了（行是样品，列是 ASV），需要在传入 otu_table 之前，使用 t() 函数对其进行转置，并确保它仍然是一个 data.frame。\n\notu_table &lt;- as.data.frame(t(otu_table))\n\n为了让你直观理解 microtable 的结构逻辑，可以参考下图的对应关系：\n\nOTU Table: 行名必须对接 Taxonomy Table 的行名（即 ASV ID）。\nOTU Table: 列名必须对接 Sample Table 的行名（即 Sample ID）。\n\n\n\n4.3.3 Sample 表\n\nsample_table = read_csv(metadata_file)\nsample_table = column_to_rownames(sample_table, var = names(sample_table)[1])\n\n\n\n4.3.4 Taxonomy 表\n\ntaxon_table = read_csv(tax_table_file)\ntaxon_table = column_to_rownames(taxon_table, var = names(taxon_table)[1]) |&gt; \n  mutate(Genus = if_else(str_detect(Genus, \"Burkholderia\"), \"Burkholderia\", Genus))\n\n\n\n4.3.5 构建对象\n构建 microtable 对象。\n\nmt = microtable$new(otu_table = otu_table, sample_table = sample_table, tax_table = taxon_table)\nmt\n\n#&gt; microtable-class object:\n#&gt; sample_table have 12 rows and 8 columns\n#&gt; otu_table have 7230 rows and 12 columns\n#&gt; tax_table have 7230 rows and 7 columns\n\n\n处理 Taxonmic 表格中的 NA 值。\n\n删掉 Phylum == NA 的 ASV（根本没比对上的垃圾序列）。\n\n\nmt$tax_table = subset(mt$tax_table, !is.na(Phylum))\nmt$tidy_dataset()\n\n\n为未知的 Genus 填充数据（自上级非 NA）。\n\n\n# 该函数会自动查找分类表中的缺失值并填充\nmt$tax_table &lt;- tidy_taxonomy(mt$tax_table)\n\n# 填充完成后，运行 tidy_dataset 同步一下\nmt$tidy_dataset()",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>β 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "beta.html#实现",
+    "href": "beta.html#实现",
+    "title": "4  β 多样性",
+    "section": "4.4 实现",
+    "text": "4.4 实现\n\n4.4.1 计算 Beta 多样性距离矩阵\n首先计算 Bray-Curtis 相异度矩阵，这是最常用的生态距离指标。\n\n# 计算 Beta 多样性距离矩阵\nmt$cal_betadiv()\n\n# 查看可用的距离矩阵\nnames(mt$beta_diversity)\n\n#&gt; [1] \"bray\"    \"jaccard\"\n\n\n参数说明： - 默认计算 Bray-Curtis、Jaccard、weighted Unifrac 和 unweighted Unifrac - 如需计算 Unifrac 距离，需要提供系统发育树（phylo_tree）\n\n\n4.4.2 PCoA 分析\n主坐标分析（Principal Coordinate Analysis, PCoA）是一种将高维距离矩阵降维可视化的方法。\n\n# 创建 trans_beta 对象，使用 Bray-Curtis 距离\nt1 = trans_beta$new(dataset = mt, group = \"treatment\", measure = \"bray\")\n\n# 进行 PCoA 排序\nt1$cal_ordination(method = \"PCoA\")\n\n\n4.4.2.1 按处理组可视化\n\n# 绘制 PCoA 结果，带置信椭圆\nt1$plot_ordination(plot_color = \"treatment\",\n                   plot_type = c(\"point\", \"ellipse\"))\n\n\n\n\n\n\n\n图 4.1: PCoA 排序图（按处理组着色）\n\n\n\n\n\n图形解读：\n\n点之间的距离反映样本间的 Bray-Curtis 相异度，距离越近表示群落越相似\n置信椭圆（95%）显示各组的离散程度，椭圆重叠程度反映组间差异程度\n轴标签中的百分比表示该轴解释的总体变异比例\n\n\n\n\n4.4.3 NMDS 分析\n非度量多维尺度分析（Non-metric Multidimensional Scaling, NMDS）是另一种常用的排序方法，特别适用于生态数据。\n\n# NMDS 分析\nt1 = trans_beta$new(dataset = mt, group = \"treatment\", measure = \"bray\")\nt1$cal_ordination(method = \"NMDS\")\n\n#&gt; Run 0 stress 0.03480099 \n#&gt; Run 1 stress 0.034801 \n#&gt; ... Procrustes: rmse 2.275452e-05  max resid 3.595248e-05 \n#&gt; ... Similar to previous best\n#&gt; Run 2 stress 0.03480099 \n#&gt; ... Procrustes: rmse 5.770052e-06  max resid 9.054006e-06 \n#&gt; ... Similar to previous best\n#&gt; Run 3 stress 0.1175226 \n#&gt; Run 4 stress 0.182305 \n#&gt; Run 5 stress 0.034801 \n#&gt; ... Procrustes: rmse 1.838743e-05  max resid 2.813541e-05 \n#&gt; ... Similar to previous best\n#&gt; Run 6 stress 0.1175226 \n#&gt; Run 7 stress 0.07730992 \n#&gt; Run 8 stress 0.07730992 \n#&gt; Run 9 stress 0.07730992 \n#&gt; Run 10 stress 0.07730992 \n#&gt; Run 11 stress 0.034801 \n#&gt; ... Procrustes: rmse 2.0029e-05  max resid 3.159756e-05 \n#&gt; ... Similar to previous best\n#&gt; Run 12 stress 0.1175226 \n#&gt; Run 13 stress 0.03480099 \n#&gt; ... Procrustes: rmse 6.065128e-06  max resid 9.535413e-06 \n#&gt; ... Similar to previous best\n#&gt; Run 14 stress 0.03480099 \n#&gt; ... Procrustes: rmse 4.188896e-06  max resid 6.162926e-06 \n#&gt; ... Similar to previous best\n#&gt; Run 15 stress 0.03480099 \n#&gt; ... Procrustes: rmse 3.251784e-06  max resid 6.365536e-06 \n#&gt; ... Similar to previous best\n#&gt; Run 16 stress 0.034801 \n#&gt; ... Procrustes: rmse 1.483593e-05  max resid 2.341149e-05 \n#&gt; ... Similar to previous best\n#&gt; Run 17 stress 0.03480099 \n#&gt; ... Procrustes: rmse 1.586606e-06  max resid 2.256388e-06 \n#&gt; ... Similar to previous best\n#&gt; Run 18 stress 0.03480099 \n#&gt; ... Procrustes: rmse 1.200469e-06  max resid 3.253711e-06 \n#&gt; ... Similar to previous best\n#&gt; Run 19 stress 0.07730992 \n#&gt; Run 20 stress 0.1342707 \n#&gt; *** Best solution repeated 10 times\n\nt1$plot_ordination(plot_color = \"treatment\", plot_type = c(\"point\", \"ellipse\"))\n\n\n\n\n\n\n\n图 4.2: NMDS 排序图\n\n\n\n\n\nPCoA vs NMDS：\n\nPCoA 是度量性排序，保持距离关系的精确性\nNMDS 是非度量性排序，更注重保持样本间的相对顺序，对非线性关系更稳健\n\n\n\n4.4.4 组间距离分析\n计算和比较组内距离（同一处理组内样本间的距离）与组间距离（不同处理组间样本的距离）。\n\n4.4.4.1 组内距离\n\nt1 = trans_beta$new(dataset = mt, group = \"treatment\", measure = \"bray\")\nt1$cal_group_distance(within_group = TRUE)\nt1$cal_group_distance_diff(method = \"wilcox\")\nt1$plot_group_distance(add = \"mean\")\n\n\n\n\n\n\n\n图 4.3: 组内距离分析\n\n\n\n\n\n组内距离的生物学意义：\n\n反映组内样本的重复性和群落的稳定性\n组内距离小表明处理条件对群落的影响较为一致\n\n\n\n\n4.4.5 PERMANOVA 统计检验\n置换多元方差分析（PERMANOVA）用于检验组间差异的统计显著性。\n\n# 整体检验\nt1$cal_manova(manova_all = TRUE)\nt1$res_manova\n\n#&gt;           Df SumOfSqs        R2        F Pr(&gt;F) Significance\n#&gt; treatment  2 1.003211 0.3083216 2.005914  0.005           **\n#&gt; Residual   9 2.250570 0.6916784       NA     NA         &lt;NA&gt;\n#&gt; Total     11 3.253782 1.0000000       NA     NA         &lt;NA&gt;\n\n\n结果解读：\n\nR² 表示处理因素解释的总变异比例\nP-value 表示差异的显著性水平\n若 P &lt; 0.05，说明处理组间的群落组成存在显著差异\n\n\n# 两两比较\nt1$cal_manova(manova_all = FALSE)\nt1$res_manova\n\n#&gt;         Groups measure        F        R2 p.value p.adjusted Significance\n#&gt; 1 ZY1 vs ZY0.5    bray 1.417881 0.1911436   0.108      0.108             \n#&gt; 2   ZY1 vs ZY0    bray 2.631243 0.3048510   0.022      0.039            *\n#&gt; 3 ZY0.5 vs ZY0    bray 1.984219 0.2485176   0.026      0.039            *\n\n\n\n\n4.4.6 ANOSIM 分析\n相似性分析（ANOSIM）是另一种常用的非参数检验方法。\n\nt1$cal_anosim(group = \"treatment\")\nt1$res_anosim\n\n#&gt;                    Test permutations statistic.R p.value Significance\n#&gt; 1 ANOSIM for all groups          999   0.5462963   0.001          ***\n\n\nANOSIM 结果解读：\n\nR 值范围：-1 到 1\nR &gt; 0 表示组间差异大于组内差异\nR 接近 0 表示组间无显著差异",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>β 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "beta.html#结果",
+    "href": "beta.html#结果",
+    "title": "4  β 多样性",
+    "section": "4.5 结果",
+    "text": "4.5 结果\n\n4.5.1 排序图揭示的群落结构\n从 PCoA 排序图（图 4.1）可以观察到：\n\n组间分离程度：\n\n若各处理组的置信椭圆明显分离，说明处理条件对群落结构产生了显著影响\n若椭圆严重重叠，说明处理效应较弱或组内变异较大\n\n主要变异轴：\n\n\nPCoA1 和 PCoA2 轴解释的变异比例反映了主要的环境梯度方向\n\n结合环境因子数据，可以推断驱动群落变化的关键因素\n\n\n\n异常样本识别：\n\n远离本组其他样本的点可能是异常值，需要检查原始数据\n\n\n\n\n4.5.2 组间差异的统计分析\nPERMANOVA 结果解读：\n基于 t1$res_manova 的结果：\n\n显著性判断：\n\n若 P &lt; 0.05，拒绝原假设，认为处理组间的群落组成存在显著差异\n若 P &gt; 0.05，不能认为处理对群落结构产生了显著影响\n\n效应量评估：\n\nR² 表示处理因素解释的群落变异比例\nR² = 0.3 表示处理解释了 30% 的群落变异，其余由其他因素（如空间、随机因素）解释\n\n\n两两比较结果：\n若整体检验显著，通过两两比较可以识别具体哪些组之间存在差异： - ZY0 vs ZY0.5：可能显著（P &lt; 0.05） - ZY0 vs ZY1：可能极显著（P &lt; 0.01） - ZY0.5 vs ZY1：可能不显著（P &gt; 0.05）\n\n\n4.5.3 综合讨论\n处理效应的模式分析：\n根据排序图和统计检验结果，可以推断处理效应的模式：\n\n剂量效应：\n\n若 ZY0 → ZY0.5 → ZY1 在排序图上呈梯度排列，可能存在剂量-效应关系\n某些处理强度可能处于”生态阈值”附近，导致群落发生质变\n\n方向性变化：\n\n观察各组在排序图上的位置，可以推断群落变化的方向\n例如：若沿 PCoA1 轴从左到右，某些门（如 Proteobacteria）的丰度可能增加\n\n变异来源分解：\n\n处理因素解释的变异比例（R²）反映了处理的相对重要性\n高 R²（&gt;0.3）：处理是主要驱动因素\n中等 R²（0.1-0.3）：处理有一定影响，但其他因素也很重要\n低 R²（&lt;0.1）：处理效应较弱，或存在较强的背景噪声\n\n\n与其他分析的关联：\n\n与 Alpha 多样性的关系：\n\n若 Beta 差异显著但 Alpha 无差异：处理改变了物种组成但未改变多样性\n若两者都显著：处理同时改变了群落的组成和多样性\n\n与物种组成分析的印证：\n\nBeta 多样性的结果应与物种组成柱状图一致\n若 PCoA 显示组间分离，柱状图中应能观察到特定分类群的组间差异\n\n\n局限性与注意事项：\n\n距离矩阵的选择：不同距离指标可能给出略有不同的结果，建议尝试多种指标进行敏感性分析\n样本量的影响：小样本量（n &lt; 5）时，统计检验的功效可能不足\n组成性效应：Beta 多样性基于相对丰度数据，存在组成性效应，解释时需谨慎\n多重检验问题：进行多组比较时，需要考虑 P 值校正",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>β 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "beta.html#小提示",
+    "href": "beta.html#小提示",
+    "title": "4  β 多样性",
+    "section": "4.6 小提示",
+    "text": "4.6 小提示\nmicroeco 包的使用文档参见：https://chiliubio.github.io/microeco_tutorial。\n\n排序分析中的 plot_type 参数支持多种图形元素组合：\n\n\"point\"：散点\n\"ellipse\"：置信椭圆\n\"chull\"：凸包\n\"centroid\"：质心连线\n\nPERMANOVA 对数据的多元正态性和方差齐性假设相对宽松，但仍建议检查数据分布\n当样本量较小时，PERMANOVA 的 P 值可能不稳定，可以增加置换次数（permutations 参数）",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>β 多样性</span>"
+    ]
+  },
+  {
+    "objectID": "differ.html",
+    "href": "differ.html",
+    "title": "5  菌群差异分析",
+    "section": "",
+    "text": "5.1 概述\n差异丰度分析（Differential Abundance Analysis）旨在识别在不同实验条件或处理组之间丰度显著变化的微生物类群，即”生物标志物”（Biomarkers）。这是微生物组研究中最关键的步骤之一，直接关联到实验处理的生物学效应。",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>菌群差异分析</span>"
+    ]
+  },
+  {
+    "objectID": "differ.html#概述",
+    "href": "differ.html#概述",
+    "title": "5  菌群差异分析",
+    "section": "",
+    "text": "5.1.1 差异分析的科学目标\n\n识别响应类群：发现对处理条件敏感的关键微生物\n解析功能变化：结合分类群的功能特征，推断处理对生态系统功能的影响\n开发生物标志物：为环境监测、疾病诊断等应用提供指示物种\n验证科学假设：统计验证在物种组成分析中观察到的趋势\n\n\n\n5.1.2 常用差异分析方法\n由于微生物组数据的特殊性（稀疏性、组成性、过度离散），多种统计方法被开发用于差异分析：\n\n\n\n方法\n特点\n适用场景\n\n\n\n\nLEfSe\n结合统计检验和 LDA 分数\n经典方法，适合多组比较\n\n\nANCOM-BC2\n校正组成性偏倚\n高灵敏度，推荐首选\n\n\nDESeq2\n基于负二项分布\n适合大样本量\n\n\nMetagenomeSeq\n零膨胀对数正态模型\n适合稀疏数据\n\n\nWilcoxon/KW\n非参数检验\n简单稳健，不考虑组成性\n\n\n\n\n\n5.1.3 方法选择建议\n\nLEfSe：作为经典方法，适合初步探索和可视化\nANCOM-BC2：当前推荐的首选方法，对组成性效应校正较好\n多种方法比较：不同方法可能产生不同结果，建议运行多种方法取交集",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>菌群差异分析</span>"
+    ]
+  },
+  {
+    "objectID": "differ.html#流程",
+    "href": "differ.html#流程",
+    "title": "5  菌群差异分析",
+    "section": "5.2 流程",
+    "text": "5.2 流程\n在 microeco 包中，差异分析通过 trans_diff 类实现，主要流程如下：\n\n创建分析对象：指定方法和参数\n运行分析：自动执行统计检验\n结果可视化：绘制条形图、误差线图、系统发育树图等\n结果解读：结合生物学知识解释显著差异的分类群\n\n注意事项：\n\n分类表必须经过 tidy_taxonomy() 处理，确保格式统一\n不同方法对数据的假设不同，需根据数据特点选择\n多重检验校正（FDR/Benjamini-Hochberg）是必需的\n\n\n\n\n\n\n\n\n\n图 5.1: 使用 microeco 进行差异分析的方法概览",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>菌群差异分析</span>"
+    ]
+  },
+  {
+    "objectID": "differ.html#构建-microtable-对象",
+    "href": "differ.html#构建-microtable-对象",
+    "title": "5  菌群差异分析",
+    "section": "5.3 构建 microtable 对象",
+    "text": "5.3 构建 microtable 对象\n这里使用 microeco 软件包进行数据分析。\n首先需要从数据保存的目录读取数据，并构建 microtable 对象。\n\nPATH = \"data/amplicon/processed\"\nlist.files(PATH, full.names = TRUE)\n\n#&gt; [1] \"data/amplicon/processed/asv.fasta\"   \n#&gt; [2] \"data/amplicon/processed/asvtab.csv\"  \n#&gt; [3] \"data/amplicon/processed/metadata.csv\"\n#&gt; [4] \"data/amplicon/processed/taxtab.csv\"\n\n\n\nmetadata_file  = file.path(PATH, \"metadata.csv\")\notu_table_file = file.path(PATH, \"asvtab.csv\")\ntax_table_file = file.path(PATH, \"taxtab.csv\")\nsequence_file  = file.path(PATH, \"asv.fasta\")\n\n\n5.3.1 载入包\n\nlibrary(tidyverse)\nlibrary(microeco)\n\ntheme_set(theme_bw())\n\n\n\n5.3.2 OTU 表\n\notu_table = read_csv(otu_table_file)\notu_table = column_to_rownames(otu_table, var = names(otu_table)[1])\n\n在 microeco 包（以及大多数 R 语言生物信息包）的规范中，microtable 对 otu_table 的格式有严格要求：行必须是 Taxa（ASV/OTU），列必须是 Samples。\n如果你的数据正好反过来了（行是样品，列是 ASV），需要在传入 otu_table 之前，使用 t() 函数对其进行转置，并确保它仍然是一个 data.frame。\n\notu_table &lt;- as.data.frame(t(otu_table))\n\n为了让你直观理解 microtable 的结构逻辑，可以参考下图的对应关系：\n\nOTU Table: 行名必须对接 Taxonomy Table 的行名（即 ASV ID）。\nOTU Table: 列名必须对接 Sample Table 的行名（即 Sample ID）。\n\n\n\n5.3.3 Sample 表\n\nsample_table = read_csv(metadata_file)\nsample_table = column_to_rownames(sample_table, var = names(sample_table)[1])\n\n\n\n5.3.4 Taxonomy 表\n\ntaxon_table = read_csv(tax_table_file)\ntaxon_table = column_to_rownames(taxon_table, var = names(taxon_table)[1]) |&gt; \n  mutate(Genus = if_else(str_detect(Genus, \"Burkholderia\"), \"Burkholderia\", Genus))\n\n\n\n5.3.5 构建对象\n构建 microtable 对象。\n\nmt = microtable$new(otu_table = otu_table, sample_table = sample_table, tax_table = taxon_table)\nmt\n\n#&gt; microtable-class object:\n#&gt; sample_table have 12 rows and 8 columns\n#&gt; otu_table have 7230 rows and 12 columns\n#&gt; tax_table have 7230 rows and 7 columns\n\n\n处理 Taxonmic 表格中的 NA 值。\n\n删掉 Phylum == NA 的 ASV（根本没比对上的垃圾序列）。\n\n\nmt$tax_table = subset(mt$tax_table, !is.na(Phylum))\nmt$tidy_dataset()\n\n\n为未知的 Genus 填充数据（自上级非 NA）。\n\n\n# 该函数会自动查找分类表中的缺失值并填充\nmt$tax_table &lt;- tidy_taxonomy(mt$tax_table)\n\n# 填充完成后，运行 tidy_dataset 同步一下\nmt$tidy_dataset()",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>菌群差异分析</span>"
+    ]
+  },
+  {
+    "objectID": "differ.html#实现",
+    "href": "differ.html#实现",
+    "title": "5  菌群差异分析",
+    "section": "5.4 实现",
+    "text": "5.4 实现\n\n5.4.1 LEfSe 方法\nLEfSe（Linear Discriminant Analysis Effect Size）是一种经典的差异分析方法，由 Huttenhower 实验室于 2011 年提出。它结合非参数统计检验和线性判别分析（LDA），用于发现不同组别间显著差异的生物标志物。\n\n5.4.1.1 LEfSe 的两步筛选策略\n\n第一步：非参数检验（Kruskal-Wallis）\n\n检验各分类群在不同组间的丰度差异是否显著\n仅保留 P &lt; α（默认 0.05）的分类群\n\n第二步：线性判别分析（LDA）\n\n对通过第一步筛选的分类群进行 LDA\n计算每个分类群对组间差异的贡献度（LDA 分数）\nLDA 分数越高，表示该分类群的区分能力越强\n\n\n\n\n\n\n\n\nLDA 分数的解读\n\n\n\n\nLDA &gt; 2：通常被认为是显著的生物标志物\n条形图的红色/绿色（或其他颜色）表示该分类群在哪一组中富集\nLDA 分数是对数尺度，分数为 2 表示该分类群在对应组中的丰度约为另一组的 100 倍（假设以 10 为底的对数）\n\n\n\n\n\n5.4.1.2 LEfSe 的局限性\n\n未校正组成性效应，可能存在假阳性\n主要用于两组或多组比较，对复杂实验设计支持有限\n作为探索性分析工具较好，但建议用其他方法验证\n\n\n# 使用 LEfSe 方法进行差异分析\nt1 = trans_diff$new(\n  dataset = mt,\n  method = \"lefse\",\n  alpha = 0.05,\n  group = \"treatment\",\n  p_adjust_method = \"none\"\n)\n\n# 查看差异分析结果\nhead(t1$res_diff)\n\n#&gt;                                                                                                     Comparison\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria                                         ZY0 - ZY0.5 - ZY1\n#&gt; k__Bacteria|p__Pseudomonadota                                                                ZY0 - ZY0.5 - ZY1\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales                       ZY0 - ZY0.5 - ZY1\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales|f__Rhodanobacteraceae ZY0 - ZY0.5 - ZY1\n#&gt; k__Bacteria|p__Acidobacteriota                                                               ZY0 - ZY0.5 - ZY1\n#&gt; k__Bacteria|p__Acidobacteriota|c__Acidobacteriae                                             ZY0 - ZY0.5 - ZY1\n#&gt;                                                                                                                                                                                      Taxa\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria                                                                                 k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria\n#&gt; k__Bacteria|p__Pseudomonadota                                                                                                                               k__Bacteria|p__Pseudomonadota\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales                                             k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales|f__Rhodanobacteraceae k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales|f__Rhodanobacteraceae\n#&gt; k__Bacteria|p__Acidobacteriota                                                                                                                             k__Bacteria|p__Acidobacteriota\n#&gt; k__Bacteria|p__Acidobacteriota|c__Acidobacteriae                                                                                         k__Bacteria|p__Acidobacteriota|c__Acidobacteriae\n#&gt;                                                                                              Method\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria                                          LEfSe\n#&gt; k__Bacteria|p__Pseudomonadota                                                                 LEfSe\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales                        LEfSe\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales|f__Rhodanobacteraceae  LEfSe\n#&gt; k__Bacteria|p__Acidobacteriota                                                                LEfSe\n#&gt; k__Bacteria|p__Acidobacteriota|c__Acidobacteriae                                              LEfSe\n#&gt;                                                                                              Group\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria                                           ZY1\n#&gt; k__Bacteria|p__Pseudomonadota                                                                  ZY1\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales                         ZY1\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales|f__Rhodanobacteraceae   ZY1\n#&gt; k__Bacteria|p__Acidobacteriota                                                                 ZY0\n#&gt; k__Bacteria|p__Acidobacteriota|c__Acidobacteriae                                               ZY0\n#&gt;                                                                                                   LDA\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria                                         4.987083\n#&gt; k__Bacteria|p__Pseudomonadota                                                                4.983394\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales                       4.969419\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales|f__Rhodanobacteraceae 4.883293\n#&gt; k__Bacteria|p__Acidobacteriota                                                               4.861527\n#&gt; k__Bacteria|p__Acidobacteriota|c__Acidobacteriae                                             4.788068\n#&gt;                                                                                                  P.unadj\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria                                         0.012467682\n#&gt; k__Bacteria|p__Pseudomonadota                                                                0.018315639\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales                       0.015404788\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales|f__Rhodanobacteraceae 0.023069802\n#&gt; k__Bacteria|p__Acidobacteriota                                                               0.007276706\n#&gt; k__Bacteria|p__Acidobacteriota|c__Acidobacteriae                                             0.007276706\n#&gt;                                                                                                    P.adj\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria                                         0.012467682\n#&gt; k__Bacteria|p__Pseudomonadota                                                                0.018315639\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales                       0.015404788\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales|f__Rhodanobacteraceae 0.023069802\n#&gt; k__Bacteria|p__Acidobacteriota                                                               0.007276706\n#&gt; k__Bacteria|p__Acidobacteriota|c__Acidobacteriae                                             0.007276706\n#&gt;                                                                                              Significance\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria                                                    *\n#&gt; k__Bacteria|p__Pseudomonadota                                                                           *\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales                                  *\n#&gt; k__Bacteria|p__Pseudomonadota|c__Gammaproteobacteria|o__Lysobacterales|f__Rhodanobacteraceae            *\n#&gt; k__Bacteria|p__Acidobacteriota                                                                         **\n#&gt; k__Bacteria|p__Acidobacteriota|c__Acidobacteriae                                                       **\n\n\n参数说明：\n\nmethod = \"lefse\"：指定使用 LEfSe 方法\nalpha = 0.05：显著性水平阈值\np_adjust_method = \"none\"：不进行 p 值校正（LEfSe 内部有自己的过滤机制）\n\n\n\n5.4.1.3 LEfSe 结果条形图\n\n# 显示 LDA &gt; 2 的分类群条形图\nt1$plot_diff_bar(use_number = 1:20)\n\n\n\n\n\n\n\n图 5.2: LEfSe 差异分析条形图（LDA 分数）\n\n\n\n\n\n图形解读：\n\n条形长度表示 LDA 分数（对数尺度），分数越大表示差异越显著\n颜色表示该分类群富集的组别\n通常 LDA &gt; 2 被认为是显著的生物标志物\n\n\n\n5.4.1.4 差异分类群丰度图\n\nt1$plot_diff_abund(plot_type = \"errorbar\")\n\n\n\n\n\n\n\n图 5.3: 差异分类群的相对丰度\n\n\n\n\n\n\n\n5.4.1.5 系统发育树图（Cladogram）\n\nrequire(ggtree)\n# 绘制系统发育树图（需要 ggtree 包）\n# 注意：若分类表格式不统一可能导致错误，请确保已运行 tidy_taxonomy()\nt1$plot_diff_cladogram(\n  use_taxa_num = 200,\n  use_feature_num = 50,\n  clade_label_level = 5,\n  group = \"treatment\"\n)\n\n#&gt; Error in `child_list[[i]]`:\n#&gt; ! attempt to select less than one element in integerOneIndex\n\n\n图形解读：\n\n树的分支表示分类学层级\n节点颜色表示该分支富集的组别\n字母标记对应图例中的具体分类群\n\n\n\n\n5.4.2 随机森林方法\n随机森林（Random Forest）是一种机器学习方法，可用于识别重要的分类特征。\n\nlibrary(randomForest)\n\n# 使用随机森林方法（属水平）\nt1 = trans_diff$new(\n  dataset = mt,\n  method = \"rf\",\n  taxa_level = \"Genus\",\n  nresam = 1,\n  boots = 1\n)\n\n#&gt; Error in `initialize()`:\n#&gt; ! The group parameter is necessary for differential test method: rf !\n\n# 条形图展示重要性分数\nt1$plot_diff_bar(use_number = 1:20)\n\n\n\n\n\n\n\n\nMeanDecreaseGini：\n\n表示该分类群对分类模型的贡献度\n值越大表示该分类群的区分能力越强\n\n\n\n5.4.3 ANCOM-BC2 方法\nANCOM-BC2（Analysis of Compositions of Microbiomes with Bias Correction 2）是 2023 年发表在 Nature Methods 上的方法，是当前推荐的差异分析首选方法。\n\n5.4.3.1 ANCOM-BC2 的核心思想\n微生物组数据的组成性效应导致传统方法难以准确估计绝对丰度的变化。ANCOM-BC2 通过以下步骤解决这一问题：\n\n估计样本特异性偏差（Sample-specific bias）\n\n每个样本的测序深度、DNA 提取效率等因素都会引入系统性偏差\nANCOM-BC2 通过统计学方法估计这些偏差\n\n校正组成性效应\n\n基于估计的偏差，将相对丰度数据转换为”校正后的绝对丰度”\n这使得不同样本间的丰度比较更加可靠\n\n多重检验校正\n\n自动进行多重检验校正（Benjamini-Hochberg FDR）\n控制假阳性率\n\n\n\n\n5.4.3.2 为何 ANCOM-BC2 优于传统方法？\n\n\n\n特性\nLEfSe\nANCOM-BC2\n\n\n\n\n校正组成性效应\n否\n是\n\n\n支持协变量\n有限\n是（如 pH、温度等）\n\n\n假阳性控制\n一般\n较好\n\n\n计算速度\n快\n较慢\n\n\n\n使用建议：ANCOM-BC2 适合作为主要的差异分析方法，LEfSe 可作为辅助的可视化和探索工具。\n\n# 使用 ANCOM-BC2 方法\nt1 = trans_diff$new(\n  dataset = mt,\n  method = \"ancombc2\",\n  taxa_level = \"Genus\",\n  filter_thres = 0.01\n)\n\n#&gt; Error in `initialize()`:\n#&gt; ! ANCOMBC package is not installed !\n\n# 热图展示结果\nt1$plot_diff_bar(\n  heatmap_cell = \"P.adj\",\n  heatmap_sig = \"Significance\",\n  heatmap_x = \"Factors\",\n  heatmap_y = \"Taxa\"\n)\n\n\n\n\n\n\n\n\nANCOM-BC2 的优势：\n\n校正组成性效应\n控制假阳性率\n支持多组比较和协变量调整\n\n\n\n\n5.4.4 其他方法示例\n\n5.4.4.1 Wilcoxon 秩和检验\n\nt1 = trans_diff$new(\n  dataset = mt,\n  method = \"wilcox\",\n  group = \"treatment\",\n  taxa_level = \"Genus\",\n  filter_thres = 0.001\n)\n\n# 筛选显著的结果\nt1$res_diff = t1$res_diff %&gt;% subset(Significance %in% c(\"*\", \"**\", \"***\"))\nt1$plot_diff_abund(add_sig = TRUE)\n\n#&gt; Error in `t1$plot_diff_abund()`:\n#&gt; ! No significant taxa can be used to plot the abundance!\n\n\n\n\n5.4.4.2 多组比较（Kruskal-Wallis）\n\nt1 = trans_diff$new(\n  dataset = mt,\n  method = \"KW\",\n  group = \"treatment\",\n  taxa_level = \"Phylum\"\n)\n\nt1$plot_diff_abund(use_number = 1:20)",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>菌群差异分析</span>"
+    ]
+  },
+  {
+    "objectID": "differ.html#结果解读",
+    "href": "differ.html#结果解读",
+    "title": "5  菌群差异分析",
+    "section": "5.5 结果解读",
+    "text": "5.5 结果解读\n\n5.5.1 差异生物标志物的识别\n基于 LEfSe 和 ANCOM-BC2 的分析结果，我们可以识别出在各处理组中显著富集的分类群。\n结果解读步骤：\n\n筛选显著分类群：\n\nLEfSe：LDA &gt; 2 且 P &lt; 0.05\nANCOM-BC2：P.adj &lt; 0.05\n\n分类学注释：\n\n查阅文献了解这些分类群的生态功能\n结合实验处理条件推断其富集的生物学意义\n\n跨方法验证：\n\n比较不同方法识别的生物标志物\n重点关注多个方法一致发现的分类群\n\n\n\n\n5.5.2 可能的生物学发现\n基于土壤微生物组的典型发现模式：\n\n养分循环相关类群：\n\n若 ZY0.5 或 ZY1 组富集了更多参与氮循环的类群（如某些 Proteobacteria），可能表明施肥促进了功能微生物的生长\n\n胁迫耐受类群：\n\n若高剂量处理组富集了特定耐受类群，可能表明处理产生了一定的选择压力\n\n共生/互利类群：\n\n某些植物促生菌（PGPR）的富集可能解释了处理对植物生长的促进作用\n\n\n\n\n5.5.3 结果总结表格\n建议将主要发现整理为如下格式的表格：\n\n\n\n分类群\n富集组\nLDA 分数\nP 值\n已知功能\n\n\n\n\nGenus A\nZY0\n3.5\n0.01\n有机物分解\n\n\nGenus B\nZY1\n4.2\n0.005\n固氮作用\n\n\n\n\n\n5.5.4 研究局限性与建议\n\n关联非因果：差异分析揭示的是关联关系，不能直接推断因果关系\n功能验证：基于分类学的功能推断是间接的，建议通过以下方式验证：\n\nPICRUSt2 等功能预测分析\n宏基因组测序\n分离培养和功能实验\n\n生态学解释：结合环境因素（如 pH、养分含量）解释观察到的差异模式\n多重检验：当检验大量分类群时，假阳性风险增加，应使用校正后的 P 值",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>菌群差异分析</span>"
+    ]
+  },
+  {
+    "objectID": "differ.html#小提示",
+    "href": "differ.html#小提示",
+    "title": "5  菌群差异分析",
+    "section": "5.6 小提示",
+    "text": "5.6 小提示\nmicroeco 包的使用文档参见：https://chiliubio.github.io/microeco_tutorial。\n\n运行 tidy_taxonomy() 是差异分析前的必要步骤，否则可能导致 cladogram 绘图失败\nfilter_thres 参数用于预先过滤低丰度分类群，减少多重检验负担\n使用多种差异分析方法并取交集，可以提高结果的可靠性\nplot_diff_abund() 中的 add_sig = TRUE 可以添加显著性标记",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>菌群差异分析</span>"
+    ]
+  },
+  {
+    "objectID": "network.html",
+    "href": "network.html",
+    "title": "6  网络分析",
+    "section": "",
+    "text": "6.1 概述\n微生物共现网络（Co-occurrence Network）分析通过推断微生物类群间的统计关联，揭示微生物群落内的潜在相互作用关系。网络分析将复杂的群落数据转化为直观的图结构，节点代表微生物类群，边代表类群间的关联（正相关或负相关）。",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>网络分析</span>"
+    ]
+  },
+  {
+    "objectID": "network.html#概述",
+    "href": "network.html#概述",
+    "title": "6  网络分析",
+    "section": "",
+    "text": "6.1.1 网络分析的生态学意义\n\n相互作用推断：正相关可能暗示互利共生、交叉喂养或共同的环境偏好；负相关可能暗示竞争、拮抗或生态位分化\n关键物种识别：发现网络中的核心节点（Hub nodes）和关键物种（Keystone species）\n群落稳定性：通过网络拓扑特征评估群落的稳定性和鲁棒性\n功能模块：识别功能相关的微生物模块（Modules）\n\n\n\n6.1.2 网络构建方法\n\n\n\n方法\n原理\n特点\n\n\n\n\n相关性网络\nSpearman/Pearson 相关\n简单直观，计算快速\n\n\nSparCC\n稀疏相关性\n校正组成性效应\n\n\nSPIEC-EASI\n稀疏逆协方差\n考虑条件独立性，去除间接效应\n\n\nWGCNA\n加权相关网络\n适合发现模块结构\n\n\n\n\n\n6.1.3 网络拓扑指标\n\n\n\n\n\n\n\n\n指标\n含义\n生态学解释\n\n\n\n\n度（Degree）\n节点的连接数\n连接度高的可能是关键物种\n\n\n介数中心性（Betweenness）\n作为桥梁的频率\n控制信息流动的关键节点\n\n\n模块内连接度（Zi）\n在模块内的连接程度\n模块核心或外围\n\n\n模块间连接度（Pi）\n与其他模块的连接程度\n网络连接器或模块特化者\n\n\n\n\n\n6.1.4 节点分类（基于 Zi 和 Pi）\n\n网络枢纽（Network hubs）：Zi &gt; 2.5, Pi &gt; 0.62，在模块内外都高度连接\n模块枢纽（Module hubs）：Zi &gt; 2.5, Pi &lt; 0.62，主要连接模块内部\n连接器（Connectors）：Zi &lt; 2.5, Pi &gt; 0.62，连接不同模块\n外围节点（Peripherals）：Zi &lt; 2.5, Pi &lt; 0.62，大部分节点属于此类",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>网络分析</span>"
+    ]
+  },
+  {
+    "objectID": "network.html#流程",
+    "href": "network.html#流程",
+    "title": "6  网络分析",
+    "section": "6.2 流程",
+    "text": "6.2 流程\n在 microeco 包中，网络分析通过 trans_network 类实现，主要流程如下：\n\n初始化对象：指定相关计算方法和过滤阈值\n构建网络：计算相关性并构建网络\n模块划分：使用聚类算法识别网络模块\n拓扑分析：计算网络属性和节点角色\n可视化：绘制网络图并导出到外部软件\n\n\n\n\n\n\n\n\n\n图 6.1: 使用 microeco 包进行微生物网络分析的流程",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>网络分析</span>"
+    ]
+  },
+  {
+    "objectID": "network.html#构建-microtable-对象",
+    "href": "network.html#构建-microtable-对象",
+    "title": "6  网络分析",
+    "section": "6.3 构建 microtable 对象",
+    "text": "6.3 构建 microtable 对象\n这里使用 microeco 软件包进行数据分析。\n首先需要从数据保存的目录读取数据，并构建 microtable 对象。\n\nPATH = \"data/amplicon/processed\"\nlist.files(PATH, full.names = TRUE)\n\n#&gt; [1] \"data/amplicon/processed/asv.fasta\"   \n#&gt; [2] \"data/amplicon/processed/asvtab.csv\"  \n#&gt; [3] \"data/amplicon/processed/metadata.csv\"\n#&gt; [4] \"data/amplicon/processed/taxtab.csv\"\n\n\n\nmetadata_file  = file.path(PATH, \"metadata.csv\")\notu_table_file = file.path(PATH, \"asvtab.csv\")\ntax_table_file = file.path(PATH, \"taxtab.csv\")\nsequence_file  = file.path(PATH, \"asv.fasta\")\n\n\n6.3.1 载入包\n\nlibrary(tidyverse)\nlibrary(microeco)\n\ntheme_set(theme_bw())\n\n\n\n6.3.2 OTU 表\n\notu_table = read_csv(otu_table_file)\notu_table = column_to_rownames(otu_table, var = names(otu_table)[1])\n\n在 microeco 包（以及大多数 R 语言生物信息包）的规范中，microtable 对 otu_table 的格式有严格要求：行必须是 Taxa（ASV/OTU），列必须是 Samples。\n如果你的数据正好反过来了（行是样品，列是 ASV），需要在传入 otu_table 之前，使用 t() 函数对其进行转置，并确保它仍然是一个 data.frame。\n\notu_table &lt;- as.data.frame(t(otu_table))\n\n为了让你直观理解 microtable 的结构逻辑，可以参考下图的对应关系：\n\nOTU Table: 行名必须对接 Taxonomy Table 的行名（即 ASV ID）。\nOTU Table: 列名必须对接 Sample Table 的行名（即 Sample ID）。\n\n\n\n6.3.3 Sample 表\n\nsample_table = read_csv(metadata_file)\nsample_table = column_to_rownames(sample_table, var = names(sample_table)[1])\n\n\n\n6.3.4 Taxonomy 表\n\ntaxon_table = read_csv(tax_table_file)\ntaxon_table = column_to_rownames(taxon_table, var = names(taxon_table)[1]) |&gt; \n  mutate(Genus = if_else(str_detect(Genus, \"Burkholderia\"), \"Burkholderia\", Genus))\n\n\n\n6.3.5 构建对象\n构建 microtable 对象。\n\nmt = microtable$new(otu_table = otu_table, sample_table = sample_table, tax_table = taxon_table)\nmt\n\n#&gt; microtable-class object:\n#&gt; sample_table have 12 rows and 8 columns\n#&gt; otu_table have 7230 rows and 12 columns\n#&gt; tax_table have 7230 rows and 7 columns\n\n\n处理 Taxonmic 表格中的 NA 值。\n\n删掉 Phylum == NA 的 ASV（根本没比对上的垃圾序列）。\n\n\nmt$tax_table = subset(mt$tax_table, !is.na(Phylum))\nmt$tidy_dataset()\n\n\n为未知的 Genus 填充数据（自上级非 NA）。\n\n\n# 该函数会自动查找分类表中的缺失值并填充\nmt$tax_table &lt;- tidy_taxonomy(mt$tax_table)\n\n# 填充完成后，运行 tidy_dataset 同步一下\nmt$tidy_dataset()",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>网络分析</span>"
+    ]
+  },
+  {
+    "objectID": "network.html#实现",
+    "href": "network.html#实现",
+    "title": "6  网络分析",
+    "section": "6.4 实现",
+    "text": "6.4 实现\n\n6.4.1 相关性网络构建\n使用 Spearman 相关性构建共现网络是最常用的方法。\n\n# 初始化 trans_network 对象\nt1 = trans_network$new(\n  dataset = mt,\n  cor_method = \"spearman\",\n  filter_thres = 0.001,\n  tax_level = \"Genus\"\n)\n\n参数说明：\n\ncor_method = \"spearman\"：使用 Spearman 秩相关（对非正态分布稳健）\nfilter_thres = 0.001：过滤相对丰度 &lt; 0.1% 的分类群\ntax_level = \"Genus\"：在属水平构建网络\n\n\n\n6.4.2 计算网络\n\n# 构建网络，设置相关性阈值\nt1$cal_network(\n  COR_p_thres = 0.01,\n  COR_cut = 0.6,\n  COR_optimization = FALSE\n)\n\n# 查看网络基本信息\nt1$res_network\n\n#&gt; IGRAPH cbf75c8 UNW- 49 503 -- \n#&gt; + attr: name (v/c), taxa (v/c), Phylum (v/c), RelativeAbundance (v/n),\n#&gt; | label (e/c), weight (e/n)\n#&gt; + edges from cbf75c8 (vertex names):\n#&gt;  [1] ASV5f2cb69b4d62--ASV8d45d97f57c1 ASV5f2cb69b4d62--ASV80a264755ead\n#&gt;  [3] ASV5f2cb69b4d62--ASV3b5c3206737e ASV5f2cb69b4d62--ASVfb6534e8d2a0\n#&gt;  [5] ASV5f2cb69b4d62--ASV3fb2a0fcae7d ASV5f2cb69b4d62--ASV86c713b402b1\n#&gt;  [7] ASV5f2cb69b4d62--ASVa75e4fe1b306 ASV5f2cb69b4d62--ASV6e51124543c4\n#&gt;  [9] ASV5f2cb69b4d62--ASV364507f2c1af ASV5f2cb69b4d62--ASV123596181742\n#&gt; [11] ASV5f2cb69b4d62--ASVb4604014a1ec ASV5f2cb69b4d62--ASV3e7d2a4331d6\n#&gt; [13] ASV5f2cb69b4d62--ASV86ce01c03c9c ASV5f2cb69b4d62--ASVcf135dfce25c\n#&gt; + ... omitted several edges\n\n\n参数说明：\n\nCOR_p_thres = 0.01：P 值阈值，仅保留 P &lt; 0.01 的相关性\nCOR_cut = 0.6：相关系数阈值，仅保留 |r| &gt; 0.6 的边\nCOR_optimization = TRUE 可基于随机矩阵理论自动优化阈值\n\n\n\n6.4.3 模块划分\n使用社区检测算法将网络划分为功能模块。\n\n# 使用 fast greedy 算法划分模块\nt1$cal_module(method = \"cluster_fast_greedy\")\n\n# 查看模块划分结果\ntable(t1$res_node_table$module)\n\n#&gt; &lt; table of extent 0 &gt;\n\n\n\n\n6.4.4 网络可视化\n\n6.4.4.1 在 R 中绘制网络图\n\nrequire(ggraph)\n# 使用 ggraph 方法绘制网络\nt1$plot_network(\n  method = \"ggraph\",\n  node_color = \"module\",\n  node_label = \"Genus\",\n  node_size_range = c(3, 10)\n)\n\n#&gt; Error in `alg_fun()`:\n#&gt; ! unused argument (node_size_range = c(3, 10))\n\n\n图形元素说明：\n\n节点颜色：所属模块\n节点大小：连接度（Degree）\n边的颜色：正相关（通常）vs 负相关\n边的粗细：相关性强弱\n\n\n\n6.4.4.2 导出到 Gephi\n对于 publication-quality 的图形，建议导出到 Gephi 进行美化。\n\n# 保存为 GEXF 格式（需要 rgexf 包）\nt1$save_network(filepath = \"network.gexf\")\n\n\n\n\n6.4.5 网络拓扑分析\n\n6.4.5.1 计算网络属性\n\n# 计算网络拓扑属性\nt1$cal_network_attr()\nt1$res_network_attr\n\n#&gt;                                   \n#&gt; Vertex                  49.0000000\n#&gt; Edge                   503.0000000\n#&gt; Average_degree          20.5306122\n#&gt; Average_path_length      1.0757741\n#&gt; Network_diameter         3.0000000\n#&gt; Clustering_coefficient   0.9454859\n#&gt; Density                  0.4277211\n#&gt; Heterogeneity            0.5377284\n#&gt; Centralization           0.2181122\n#&gt; Modularity               0.1891820\n\n\n关键指标解读：\n\n平均度（Average degree）：每个节点的平均连接数\n聚类系数（Clustering coefficient）：网络的聚集程度\n平均路径长度：网络中任意两节点间的平均最短距离\n模块化指数（Modularity）：模块划分的质量（&gt;0.4 表示显著模块化）\n\n\n\n6.4.5.2 节点角色分析\n\n# 获取节点属性表\nt1$get_node_table(node_roles = TRUE)\nhead(t1$res_node_table)\n\n#&gt;                            name degree betweenness_centrality\n#&gt; ASV5f2cb69b4d62 ASV5f2cb69b4d62     29                      0\n#&gt; ASV8d45d97f57c1 ASV8d45d97f57c1     30                      0\n#&gt; ASV80a264755ead ASV80a264755ead     29                      0\n#&gt; ASV8959eb50740b ASV8959eb50740b      3                      0\n#&gt; ASVb03150ca3ed0 ASVb03150ca3ed0     10                      1\n#&gt; ASVa4d6e43a78d0 ASVa4d6e43a78d0      3                      0\n#&gt;                 closeness_centrality eigenvector_centrality Abundance module\n#&gt; ASV5f2cb69b4d62           0.02864384             0.95417502 0.2344011     M1\n#&gt; ASV8d45d97f57c1           0.03063871             0.98641443 0.2151080     M1\n#&gt; ASV80a264755ead           0.03040144             0.89085676 0.1862587     M1\n#&gt; ASV8959eb50740b           0.01626549             0.02469697 0.1294615     M1\n#&gt; ASVb03150ca3ed0           0.11147773             0.00000000 0.1597533     M2\n#&gt; ASVa4d6e43a78d0           0.01606384             0.02509474 0.1186430     M1\n#&gt;                          z p       taxa_roles     Kingdom             Phylum\n#&gt; ASV5f2cb69b4d62  0.3514032 0 Peripheral nodes k__Bacteria p__Gemmatimonadota\n#&gt; ASV8d45d97f57c1  0.4871726 0 Peripheral nodes k__Bacteria p__Gemmatimonadota\n#&gt; ASV80a264755ead  0.3514032 0 Peripheral nodes k__Bacteria p__Gemmatimonadota\n#&gt; ASV8959eb50740b -3.1786013 0 Peripheral nodes k__Bacteria  p__Pseudomonadota\n#&gt; ASVb03150ca3ed0  0.5838742 0 Peripheral nodes k__Bacteria   p__Chloroflexota\n#&gt; ASVa4d6e43a78d0 -3.1786013 0 Peripheral nodes k__Bacteria  p__Pseudomonadota\n#&gt;                                  Class                Order\n#&gt; ASV5f2cb69b4d62      c__Gemmatimonadia  o__Gemmatimonadales\n#&gt; ASV8d45d97f57c1      c__Gemmatimonadia  o__Gemmatimonadales\n#&gt; ASV80a264755ead      c__Gemmatimonadia  o__Gemmatimonadales\n#&gt; ASV8959eb50740b c__Gammaproteobacteria    o__Lysobacterales\n#&gt; ASVb03150ca3ed0     c__Ktedonobacteria o__Ktedonobacterales\n#&gt; ASVa4d6e43a78d0 c__Gammaproteobacteria    o__Lysobacterales\n#&gt;                                Family            Genus         Species\n#&gt; ASV5f2cb69b4d62  f__Gemmatimonadaceae              g__             s__\n#&gt; ASV8d45d97f57c1  f__Gemmatimonadaceae              g__             s__\n#&gt; ASV80a264755ead  f__Gemmatimonadaceae              g__             s__\n#&gt; ASV8959eb50740b f__Rhodanobacteraceae g__Rhodanobacter s__spathiphylli\n#&gt; ASVb03150ca3ed0        f__JG30-KF-AS9              g__             s__\n#&gt; ASVa4d6e43a78d0 f__Rhodanobacteraceae g__Rhodanobacter             s__\n\n\n\n\n6.4.5.3 绘制节点角色图\n\n# 绘制节点角色分类图\nt1$plot_taxa_roles(use_type = 1)\n\n\n\n\n\n\n\n图 6.2: 节点分类图（基于模块内和模块间连通性）\n\n\n\n\n\n图形解读： - X 轴（Pi）：模块间连通性，值越大表示与其他模块连接越多 - Y 轴（Zi）：模块内连通性，值越大表示在模块内部越核心 - 虚线将节点分为四类：网络枢纽、模块枢纽、连接器和外围节点\n\n\n6.4.5.4 按分类学信息绘制\n\nt1$plot_taxa_roles(use_type = 2)\n\n\n\n\n\n\n\n图 6.3: 节点分类图（按门水平着色）\n\n\n\n\n\n\n\n\n6.4.6 边和邻接矩阵\n\n# 获取边的属性\nt1$get_edge_table()\nhead(t1$res_edge_table)\n\n#&gt;             node1           node2 label    weight\n#&gt; 1 ASV5f2cb69b4d62 ASV8d45d97f57c1     + 0.9560647\n#&gt; 2 ASV5f2cb69b4d62 ASV80a264755ead     + 0.8266212\n#&gt; 3 ASV5f2cb69b4d62 ASV3b5c3206737e     + 0.7915392\n#&gt; 4 ASV5f2cb69b4d62 ASVfb6534e8d2a0     + 0.9228070\n#&gt; 5 ASV5f2cb69b4d62 ASV3fb2a0fcae7d     + 0.9017544\n#&gt; 6 ASV5f2cb69b4d62 ASV86c713b402b1     + 0.9017544\n\n# 获取邻接矩阵\nt1$get_adjacency_matrix()\n\n\n\n6.4.7 子网络提取\n可以提取特定模块或节点的子网络进行进一步分析。\n\n# 提取模块 M1 的子网络\nsub_network &lt;- t1$subset_network(\n  node = t1$res_node_table %&gt;%\n    base::subset(module == \"M1\") %&gt;%\n    rownames,\n  rm_single = TRUE\n)\n\n# 查看子网络\nsub_network\n\n#&gt; IGRAPH 6b72093 UNW- 34 449 -- \n#&gt; + attr: name (v/c), taxa (v/c), Phylum (v/c), RelativeAbundance (v/n),\n#&gt; | module (v/c), label (e/c), weight (e/n)\n#&gt; + edges from 6b72093 (vertex names):\n#&gt;  [1] ASV5f2cb69b4d62--ASV8d45d97f57c1 ASV5f2cb69b4d62--ASV80a264755ead\n#&gt;  [3] ASV5f2cb69b4d62--ASV3b5c3206737e ASV5f2cb69b4d62--ASVfb6534e8d2a0\n#&gt;  [5] ASV5f2cb69b4d62--ASV3fb2a0fcae7d ASV5f2cb69b4d62--ASV86c713b402b1\n#&gt;  [7] ASV5f2cb69b4d62--ASVa75e4fe1b306 ASV5f2cb69b4d62--ASV6e51124543c4\n#&gt;  [9] ASV5f2cb69b4d62--ASV364507f2c1af ASV5f2cb69b4d62--ASV123596181742\n#&gt; [11] ASV5f2cb69b4d62--ASVb4604014a1ec ASV5f2cb69b4d62--ASV3e7d2a4331d6\n#&gt; [13] ASV5f2cb69b4d62--ASV86ce01c03c9c ASV5f2cb69b4d62--ASVcf135dfce25c\n#&gt; + ... omitted several edges\n\n\n\n\n6.4.8 分类群间连接分析\n计算不同分类群之间的连接数量。\n\n# 计算门水平间的连接数\nt1$cal_sum_links(taxa_level = \"Phylum\")\n\n# 绘制弦图（需要 chorddiag 包）\nt1$plot_sum_links(\n  plot_pos = TRUE,\n  plot_num = 10,\n  color_values = RColorBrewer::brewer.pal(10, \"Paired\")\n)\n\n\n\n6.4.9 其他网络构建方法\n\n6.4.9.1 Bray-Curtis 网络\n\nt1 &lt;- trans_network$new(\n  dataset = mt,\n  cor_method = \"bray\",\n  filter_thres = 0.001\n)\nt1$cal_network(network_method = \"COR\")\nt1$cal_module()\nt1$plot_network(node_color = \"Phylum\", node_label = \"Genus\")\n\n\n\n6.4.9.2 WGCNA 方法\n\nlibrary(WGCNA)\n\nt1 &lt;- trans_network$new(\n  dataset = mt,\n  cor_method = \"spearman\",\n  use_WGCNA_pearson_spearman = TRUE,\n  filter_thres = 0.001\n)\nt1$cal_network()\nt1$cal_module()\nt1$plot_network()",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>网络分析</span>"
+    ]
+  },
+  {
+    "objectID": "network.html#结果",
+    "href": "network.html#结果",
+    "title": "6  网络分析",
+    "section": "6.5 结果",
+    "text": "6.5 结果\n\n6.5.1 网络整体特征\n基于网络拓扑属性的分析结果：\n网络规模： - 节点数：网络中包含的分类群数量 - 边数：显著相关的类群对数 - 连接密度：边数与理论最大边数的比值\n网络结构： - 模块化程度：高模块化指数（&gt;0.4）表明网络具有显著的模块结构，暗示存在功能分化的微生物群组 - 小世界特性：高聚类系数和短平均路径长度表明网络具有小世界特性，信息传播效率高 - 度分布：符合幂律分布（无标度网络）表明存在少数高度连接的枢纽节点\n\n\n6.5.2 关键节点识别\n基于节点角色分析的结果：\n模块枢纽（Module hubs）：\n\n在各自模块内部高度连接\n可能是模块内的核心功能执行者\n对模块的稳定性具有重要影响\n\n连接器（Connectors）：\n\n连接不同模块的桥梁节点\n促进模块间的物质和信息交换\n对维持网络整体连通性至关重要\n\n网络枢纽（Network hubs）（如果存在）：\n\n在模块内外都高度连接\n可能是群落中的关键物种（Keystone species）\n其丧失可能对群落功能产生重大影响\n\n\n\n6.5.3 模块的功能推断\n模块的生态学意义：\n\n功能特化：\n\n同一模块内的分类群可能具有相似的功能特征或生态位偏好\n不同模块可能执行不同的生态系统功能\n\n环境响应：\n\n比较不同处理组的网络模块组成，可以识别对处理敏感的微生物群组\n模块丰度或结构的变化可能反映功能群落的重组\n\n稳定性分析：\n\n模块内部的高连接度可能增强群落的稳定性\n模块间的连接可能影响群落的恢复力和适应性\n\n\n\n\n6.5.4 网络与处理效应的关系\n可能的发现模式：\n\n网络复杂度的变化：\n\n若某处理组的网络边数减少，可能表明处理简化了群落结构\n若连接度增加，可能表明处理促进了微生物间的相互作用\n\n模块重组：\n\n处理可能导致分类群在网络中重新组织，形成新的模块结构\n某些模块可能在特定处理中消失或新出现\n\n关键节点的变化：\n\n不同处理组可能具有不同的网络枢纽\n关键物种的转换可能反映群落功能状态的变化\n\n\n\n\n6.5.5 与其他分析的关联\n与差异分析的联系：\n\n在网络中处于核心位置（高连接度）的分类群，如果在差异分析中也显著富集，则更可能是关键功能类群\n连接器节点即使丰度不高，也可能通过影响模块间交流而发挥重要作用\n\n与 Beta 多样性的联系：\n\n网络拓扑的差异可以解释 Beta 多样性观察到的模式\n组间网络结构的差异可能比单纯的组成差异更能反映功能变化\n\n\n\n6.5.6 研究局限性与注意事项\n\n相关性不等于因果：\n\n网络中的边仅表示统计关联，不代表直接的生物学相互作用\n相关可能是由共同的环境偏好或间接效应引起的\n\n组成性效应：\n\n基于相对丰度的相关性分析存在组成性效应\n建议使用 SparCC 或 SPIEC-EASI 等方法进行验证\n\n阈值依赖性：\n\n网络结构对相关性和 P 值阈值敏感\n建议使用不同阈值进行敏感性分析\n\n时间动态：\n\n横截面数据构建的网络无法反映相互作用的动态变化\n时间序列分析可以提供更丰富的信息",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>网络分析</span>"
+    ]
+  },
+  {
+    "objectID": "network.html#小提示",
+    "href": "network.html#小提示",
+    "title": "6  网络分析",
+    "section": "6.6 小提示",
+    "text": "6.6 小提示\nmicroeco 包的使用文档参见：https://chiliubio.github.io/microeco_tutorial。\n\n网络构建前建议先过滤低丰度分类群（filter_thres），以减少噪声和计算量\nCOR_optimization = TRUE 可基于随机矩阵理论自动寻找最佳相关性阈值\n使用 Gephi 软件可以获得更美观的网络可视化效果\n节点角色分类基于 Guimerà & Amaral (2005) 的方法，广泛应用于生态网络研究",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>网络分析</span>"
+    ]
+  },
+  {
+    "objectID": "summary.html",
+    "href": "summary.html",
+    "title": "7  总结",
+    "section": "",
+    "text": "7.1 核心内容回顾",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>总结</span>"
+    ]
+  },
+  {
+    "objectID": "summary.html#核心内容回顾",
+    "href": "summary.html#核心内容回顾",
+    "title": "7  总结",
+    "section": "",
+    "text": "7.1.1 测序数据预处理（DADA2）\n\n学习了 DADA2 分析流程：质量控制、错误率学习、去噪、序列拼接、去除嵌合体、分类注释\n理解了 ASV（Amplicon Sequence Variants）相比传统 OTU 聚类的优势\n掌握了使用 SILVA 数据库进行物种注释的方法\n\n关键要点：\n\n测序质量控制是确保数据可靠性的第一步\n错误率学习是 DADA2 实现高精度去噪的核心\nASV 提供了单核苷酸分辨率的物种区分能力\n\n\n\n7.1.2 构建 microtable 对象\n\n学会了将各类数据（OTU/ASV 表、样本表、分类表）整合为 microtable 对象\n掌握了数据清洗和格式标准化的方法\n理解了 microeco 包的数据结构和工作原理\n\n关键要点：\n\nmicrotable 是 microeco 包分析的基础数据结构\n数据格式的标准化（行=特征，列=样本）至关重要\ntidy_taxonomy() 和 tidy_dataset() 是数据预处理的关键步骤\n\n\n\n7.1.3 群落结构分析\n\n使用 trans_abund 类进行物种组成的可视化\n掌握了柱状图、热图、箱线图等多种可视化方法\n学会了在不同分类等级（门、纲、目、科、属）分析群落组成\n\n关键要点： - 多分类等级的分析有助于从不同分辨率理解群落 - 可视化是发现科学问题的起点 - 相对丰度数据需要注意组成性效应\n\n\n7.1.4 Alpha 多样性分析\n\n理解了 Alpha 多样性的生态学意义和常用指标\n学会了数据抽平（Rarefaction）的方法\n掌握了组间差异检验和可视化的方法\n\n关键要点：\n\nObserved/Chao1 反映物种丰富度，Shannon/Simpson 反映综合多样性\n抽平是消除测序深度差异影响的标准方法\n统计方法的选择应根据数据分布特征决定\n\n\n\n7.1.5 Beta 多样性分析\n\n理解了 Beta 多样性的概念和常用距离指标\n掌握了 PCoA 和 NMDS 排序分析方法\n学会了 PERMANOVA 等统计检验方法\n\n关键要点：\n\nBray-Curtis 是生态学中最常用的距离指标\n排序分析可以直观展示样本间的相似性关系\nPERMANOVA 是检验组间差异显著性的标准方法\n\n\n\n7.1.6 差异分析\n\n学习了多种差异分析方法（LEfSe、ANCOM-BC2、随机森林等）\n理解了不同方法的特点和适用场景\n掌握了生物标志物的识别和可视化\n\n关键要点：\n\n不同方法可能产生不同结果，建议多种方法互相验证\nANCOM-BC2 是当前推荐的校正组成性效应的方法\n统计显著性不等于生物学重要性，需要结合功能知识解释\n\n\n\n7.1.7 网络分析\n\n理解了微生物共现网络的生态学意义\n学会了网络构建、模块划分和拓扑分析\n掌握了节点角色分类和关键物种识别\n\n关键要点：\n\n网络分析可以揭示物种间的潜在相互作用\n模块结构反映了功能相关的微生物群组\n网络枢纽可能是群落中的关键物种",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>总结</span>"
+    ]
+  },
+  {
+    "objectID": "summary.html#分析流程总结图",
+    "href": "summary.html#分析流程总结图",
+    "title": "7  总结",
+    "section": "7.2 分析流程总结图",
+    "text": "7.2 分析流程总结图\n原始测序数据 (FASTQ)\n    ↓\nDADA2 预处理\n    ↓\nASV 表 + 分类表 + 样本表\n    ↓\n构建 microtable 对象\n    ↓\n┌─────────────┬─────────────┬─────────────┬─────────────┐\n↓             ↓             ↓             ↓             ↓\n物种组成分析  Alpha 多样性   Beta 多样性   差异分析      网络分析\n(Bar/Heatmap) (箱线图)       (PCoA/NMDS)   (LEfSe/ANCOM) (共现网络)\n↓             ↓             ↓             ↓             ↓\n群落特征描述   丰富度评估    组间差异检验   生物标志物    相互作用推断\n└─────────────┴─────────────┴─────────────┴─────────────┘\n                            ↓\n                    综合生物学解释",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>总结</span>"
+    ]
+  },
+  {
+    "objectID": "summary.html#关键注意事项",
+    "href": "summary.html#关键注意事项",
+    "title": "7  总结",
+    "section": "7.3 关键注意事项",
+    "text": "7.3 关键注意事项\n\n7.3.1 数据质量\n\n质量控制：始终从测序质量评估开始，确保数据可靠性\n数据过滤：适当过滤低丰度特征，减少噪声和多重检验负担\n数据标准化：根据分析类型选择适当的标准化方法（抽平、CLR 等）\n\n\n\n7.3.2 统计分析\n\n方法选择：根据数据分布和研究问题选择合适的统计方法\n多重检验：进行多重比较时注意校正 P 值，控制假阳性率\n效应量：关注效应量大小，不仅依赖 P 值判断生物学意义\n\n\n\n7.3.3 结果解释\n\n组成性效应：相对丰度数据存在组成性效应，解释差异时需谨慎\n相关性≠因果性：网络分析中的相关关系不证明直接相互作用\n功能推断：基于分类学的功能推断是间接的，建议通过功能预测或实验验证",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>总结</span>"
+    ]
+  },
+  {
+    "objectID": "summary.html#拓展学习方向",
+    "href": "summary.html#拓展学习方向",
+    "title": "7  总结",
+    "section": "7.4 拓展学习方向",
+    "text": "7.4 拓展学习方向\n\n功能预测分析：\n\n使用 PICRUSt2 预测微生物群落的功能潜能\n结合代谢通路分析深入理解群落功能\n\n时间序列分析：\n\n如果拥有时间序列数据，可分析群落的动态变化\n使用 mecoturn 包进行群落转变分析\n\n多组学整合：\n\n结合宏基因组、代谢组等数据进行全面分析\n使用 trans_env 类分析微生物-环境因子关系\n\n高级统计方法：\n\n学习混合效应模型处理复杂实验设计\n探索贝叶斯方法在微生物组分析中的应用\n\n可重复性研究：\n\n使用 renv 包管理分析环境\n编写可重复的 R Markdown/Quarto 文档\n将分析流程封装为可重用的脚本或包",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>总结</span>"
+    ]
+  },
+  {
+    "objectID": "summary.html#推荐资源",
+    "href": "summary.html#推荐资源",
+    "title": "7  总结",
+    "section": "7.5 推荐资源",
+    "text": "7.5 推荐资源\n\n7.5.1 文档与教程\n\nmicroeco 官方教程\nDADA2 官方文档\nQIIME 2 文档\n\n\n\n7.5.2 重要文献\n\nCallahan et al. (2016). DADA2: High-resolution sample inference from Illumina amplicon data. Nature Methods\nMcMurdie & Holmes (2013). phyloseq: An R package for reproducible interactive analysis and graphics of microbiome census data. PLoS ONE\nMallick et al. (2021). Experimental design and quantitative analysis of microbial community multiomics. Genome Biology\n\n\n\n7.5.3 R 包资源\n\nmicroeco: 微生物组全面分析\nphyloseq: 微生物组数据结构和管理\nvegan: 生态学统计分析\nggplot2: 数据可视化",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>总结</span>"
+    ]
+  },
+  {
+    "objectID": "summary.html#结语",
+    "href": "summary.html#结语",
+    "title": "7  总结",
+    "section": "7.6 结语",
+    "text": "7.6 结语\n微生物组数据分析是一个快速发展的领域，新的方法和工具不断涌现。掌握本讲介绍的基础分析流程后，建议保持对最新文献和方法的关注，根据研究问题的需要不断学习新的技能。\n记住，数据分析的目的是回答科学问题，而非仅仅运行代码。在每一步分析中，都应该思考：\n\n这个分析要解决什么生物学问题？\n结果是否符合生态学原理？\n如何验证和深化初步发现？\n\n希望本讲能够为您的微生物组研究打下坚实基础，祝您科研顺利！",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>总结</span>"
+    ]
+  },
+  {
+    "objectID": "references.html",
+    "href": "references.html",
+    "title": "References",
+    "section": "",
+    "text": "Knuth (1984)\n\n\nKnuth, Donald E. 1984. “Literate Programming.” Comput.\nJ. 27 (2): 97–111. https://doi.org/10.1093/comjnl/27.2.97.",
+    "crumbs": [
+      "References"
+    ]
+  }
+]
