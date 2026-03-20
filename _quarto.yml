@@ -1,13 +1,19 @@
 project:
   type: book
 
-execute: 
+execute:
   freeze: auto
   error: true
   warning: false
 
-filters: 
+filters:
   - quarto-ai-helper
+
+engine: knitr
+
+knitr:
+  opts_chunk:
+    comment: "#>"
 
 book:
   title: "Lecture 6: Microbiome Analysis with R"
@@ -26,11 +32,24 @@ book:
 
 bibliography: references.bib
 
+crossref:
+  fig-title: "图"
+  tbl-title: "表"
+  fig-prefix: "图"
+  tbl-prefix: "表"
+
 format:
   html:
     theme: cosmo
+    code-overflow: wrap
   pdf:
-    documentclass: scrreprt
+    documentclass: custom
+    papersize: a4paper
+    fontsize: 9pt
+    include-in-header: preamble.tex
+    code-overflow: wrap
+    fig-width: 6
+    fig-height: 4
 
 
 

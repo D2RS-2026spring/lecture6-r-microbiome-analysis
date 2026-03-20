@@ -1,0 +1,132 @@
+% ==============================
+% 使用 ctex 统一处理中文
+% （自动加载 xeCJK，避免重复配置）
+% ==============================
+\usepackage[heading=false]{ctex}   % 关闭 ctex 自动重定义章节标题样式，便于出版社后期调整
+
+
+% ==============================
+% 字体配置（macOS 原生字体）
+% XeLaTeX 专用
+% ==============================
+\usepackage{fontspec}              % XeLaTeX / LuaLaTeX 字体支持
+
+\setmainfont{Times New Roman}      % 英文正文：出版最常用
+\setsansfont{PingFang SC}          % 英文/中文无衬线：图注、标题
+\setmonofont{Menlo}                % 等宽字体：代码、命令行
+
+\setCJKmainfont{Songti SC}         % 中文正文：宋体，符合高教社习惯
+\setCJKsansfont{PingFang SC}       % 中文黑体：标题、图表
+\setCJKmonofont{PingFang SC}       % 中文等宽字体：苹方（macOS 自带）
+
+
+% ==============================
+% 处理 Unicode 上下标字符
+% ==============================
+\usepackage{newunicodechar}
+\usepackage{siunitx}
+
+% 只要在文档里看到这几个字符，就自动转为 LaTeX 标准上下标
+\newunicodechar{⁰}{$^{0}$}
+\newunicodechar{¹}{$^{1}$}
+\newunicodechar{²}{$^{2}$}
+\newunicodechar{³}{$^{3}$}
+\newunicodechar{⁴}{$^{4}$}
+\newunicodechar{⁵}{$^{5}$}
+\newunicodechar{⁶}{$^{6}$}
+\newunicodechar{⁷}{$^{7}$}
+\newunicodechar{⁸}{$^{8}$}
+\newunicodechar{⁹}{$^{9}$}
+\newunicodechar{₀}{$_{0}$}
+\newunicodechar{₁}{$_{1}$}
+\newunicodechar{₂}{$_{2}$}
+\newunicodechar{₃}{$_{3}$}
+\newunicodechar{₄}{$_{4}$}
+\newunicodechar{₅}{$_{5}$}
+\newunicodechar{₆}{$_{6}$}
+\newunicodechar{₇}{$_{7}$}
+\newunicodechar{₈}{$_{8}$}
+\newunicodechar{₉}{$_{9}$}
+\newunicodechar{₊}{$_{+}$}
+\newunicodechar{⁺}{$^{+}$}
+\newunicodechar{⁻}{$^{-}$}
+\newunicodechar{⁼}{$^{=}$}
+\newunicodechar{⁽}{$^{(}$}
+\newunicodechar{⁾}{$^{)}$}
+\newunicodechar{・}{$\cdot$}
+\newunicodechar{₋}{$_{-}$}
+\newunicodechar{₌}{$_{=}$}
+\newunicodechar{₍}{$_{(}$}
+\newunicodechar{₎}{$_{)}$}
+\newunicodechar{℃}{\si{\celsius}}
+\newunicodechar{∶}{:}
+
+% ==============================
+% 页面版式（技术书籍紧凑风格）
+% ==============================
+\usepackage[
+  a4paper,                         % A4 纸张
+  left=2.5cm,                      % 左边距（装订侧）
+  right=2cm,                       % 右边距
+  top=2cm,                         % 上边距
+  bottom=2cm                       % 下边距
+]{geometry}
+
+
+% ==============================
+% 行距与段落
+% ==============================
+\usepackage{setspace}              % 行距控制
+\setstretch{1.15}                  % 1.15 倍行距（技术书籍紧凑风格）
+
+\usepackage{indentfirst}           % 章节后首段也缩进
+\setlength{\parindent}{2em}        % 首行缩进 2 个汉字
+
+% 段落间距
+\setlength{\parskip}{0.2em}        % 段落之间的垂直间距，紧凑但仍可区分段落
+
+
+
+% ==============================
+% 数学公式与定理环境
+% ==============================
+\usepackage{amsmath}               % AMS 数学核心
+\usepackage{amssymb}               % 数学符号
+\usepackage{amsthm}                % 定理环境
+
+\numberwithin{equation}{chapter}   % 公式编号按“章-序号”
+
+
+% ==============================
+% 图形、表格与浮动体
+% ==============================
+\usepackage{graphicx}              % 插入图片
+\usepackage{caption}               % 图表标题控制
+\usepackage{subcaption}            % 子图支持
+
+\usepackage{booktabs}              % 三线表（出版社强烈推荐）
+
+
+% ==============================
+% 中文数学与中英文间距优化
+% ==============================
+\xeCJKsetup{
+  CJKmath = true                   % 数学模式下允许中文
+}
+
+
+% ==============================
+% 参考文献（GB/T 7714-2015）
+% ==============================
+\usepackage[
+  backend=biber,                   % 使用 biber 引擎
+  style=gb7714-2015                % 国标参考文献格式
+]{biblatex}
+
+\addbibresource{references.bib}    % 参考文献数据库文件
+
+% ==============================
+% PDF 页面插入支持
+% ==============================
+\usepackage{pdfpages}
+

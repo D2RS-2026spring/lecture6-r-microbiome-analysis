@@ -46,6 +46,43 @@ knitr::include_graphics("microeco_tutorial/Images/microeco_framework.png")
 
 请确保在运行本讲代码前已安装并加载了这些包。同时，本讲使用 `renv` 包管理 R 环境依赖，以确保分析的可重复性。
 
+## 使用说明
+
+本书中的所有代码均可直接在 R 环境中运行。建议读者在阅读时同步执行代码，以加深理解。
+
+::: {.callout-tip}
+### 环境准备
+
+从课程仓库下载本课程的源代码：
+
+```bash
+git clone git@github.com:D2RS-2026spring/lecture6-r-microbiome-analysis.git
+```
+
+在开始学习之前，请确保你的 R 版本 ≥ 4.1.0，并已安装以下软件包：
+
+```{r}
+#| results: asis
+cat(paste0("本次使用的 R 版本：", R.version.string))
+```
+
+```r
+install.packages("pak")  # 推荐使用 pak 包安装
+pak::pak(c("tidyverse", "microeco", "dada2", "ggplot2",
+           "cowplot", "pheatmap", "vegan", "randomForest"))
+```
+
+如果你了解 `renv`，还可以一键创建一个可重复的本地分析环境。
+
+```r
+renv::restore()
+```
+
+然后在终端运行 `quarto render --to html` 编译全书内容[^1]。
+
+[^1]: 本项目推荐使用 [Positron](https://positron.posit.co/) 作为开发环境。用 Positron 打开本项目后，`renv` 会自动识别并恢复依赖环境，Quarto 文档也可以直接预览和渲染。如果运行 `quarto render` 将同时生成 HTML 和 PDF。因 PDF 渲染配置容易出问题，所以如果出错，推荐先生成 HTML 文档。
+:::
+
 ## 学习建议
 
 - 每个章节都按照"概述-流程-实现-结果"的结构组织，建议按顺序阅读
